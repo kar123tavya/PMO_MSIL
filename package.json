@@ -1,0 +1,14 @@
+{
+  "name": "pmo-dashboard-root",
+  "version": "1.0.0",
+  "description": "PMO Dashboard — Maruti Suzuki QA Project Monitoring Tool",
+  "private": true,
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../react-app && npm install",
+    "build":       "cd react-app && npm run build",
+    "start":       "cd server && node server.js",
+    "dev:server":  "cd server && node server.js",
+    "dev:react":   "cd react-app && npm run dev",
+    "deploy":      "npm run build && npm run start"
+  }
+}

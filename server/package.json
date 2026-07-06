@@ -1,0 +1,22 @@
+{
+  "name": "pmo-dashboard-server",
+  "version": "1.0.0",
+  "description": "PMO Dashboard — Node.js + Express + SQLite Backend (MSIL)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
+    "node-cron": "^4.6.0",
+    "node-sqlite3-wasm": "^0.8.7",
+    "nodemailer": "^9.0.3",
+    "uuid": "^9.0.1",
+    "xlsx": "^0.18.5"
+  }
+}

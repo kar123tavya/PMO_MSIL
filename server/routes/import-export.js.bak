@@ -1,0 +1,436 @@
+// ═══════════════════════════════════════════════════════
+//  routes/import-export.js
+//  GET  /api/projects/export  — download master .xlsx
+//  POST /api/projects/import  — upload master .xlsx → DB
+// ═══════════════════════════════════════════════════════
+'use strict';
+
+const express = require('express');
+const router  = express.Router();
+const multer  = require('multer');
+const XLSX    = require('xlsx');
+const { db, uuidv4 } = require('../db/schema');
+const { authMiddleware } = require('../middleware/auth');
+
+let _broadcast = () => {};
+function setBroadcast(fn) { _broadcast = fn; }
+
+// ── File upload — memory, 10 MB cap ──────────────────
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = /\.(xlsx|xls)$/i.test(file.originalname);
+    cb(null, ok);
+    if (!ok) cb(new Error('Only .xlsx or .xls files allowed'));
+  },
+});
+
+// ── 30-column master header list (export order) ──────
+const MASTER_HEADERS = [
+  // ─── Dashboard ───────────────────────────────────
+  'Project Code',        // parentCode
+  'Project Name',        // project        ← REQUIRED
+  'Theme',               // theme
+  'Division',            // division
+  'IL Status',           // status
+  'Category',            // category
+  'Financial Year',      // fy
+  'Live Target Date',    // liveTarget      (YYYY-MM-DD)
+  'Live Actual Date',    // liveActual      (YYYY-MM-DD)
+  'Man-Hours / Month',   // manhours
+  'Direct Cost (INR)',   // directCost
+  'Proactive Defects',   // proactiveDefect
+  'Use Cases',           // useCases
+  // ─── Flagship ───────────────────────────────────
+  'Flagship (Y/N)',      // flagship
+  'Critical (Y/N)',      // critical
+  'MIS (Y/N)',           // mis
+  'Third Party (Y/N)',   // thirdParty
+  'Remarks',             // overallStatus
+  // ─── Gantt / IL Timeline ──────────────────────
+  'IL1 Phase Start',     // il1_start       (YYYY-MM-DD)
+  'IL1 Phase End',       // il1_end
+  'IL2 Phase Start',     // il2_start
+  'IL2 Phase End',       // il2_end
+  'IL3 Phase Start',     // il3_start
+  'IL3 Phase End',       // il3_end
+  'IL4 Phase Start',     // il4_start
+  'IL4 Phase End',       // il4_end
+  'IL5 Phase Start',     // il5_start
+  'IL5 Phase End',       // il5_end
+  'Assigned To Staff ID',
+  'Overall Progress'
+];
+
+// ── Flexible inbound column map ───────────────────────
+const COLUMN_MAP = {
+  // dashboard
+  'project code':           'parentCode',
+  'project name':           'project',
+  'theme':                  'theme',
+  'division':               'division',
+  'il status':              'status',
+  'status':                 'status',
+  'category':               'category',
+  'financial year':         'fy',
+  'live target date':       'liveTarget',
+  'target date':            'liveTarget',
+  'live target':            'liveTarget',
+  'live actual date':       'liveActual',
+  'actual date':            'liveActual',
+  'live actual':            'liveActual',
+  'man-hours / month':      'manhours',
+  'man-hours':              'manhours',
+  'direct cost (inr)':      'directCost',
+  'direct cost':            'directCost',
+  'cost':                   'directCost',
+  'proactive defects':      'proactiveDefect',
+  'defects':                'proactiveDefect',
+  'use cases':              'useCases',
+  // flagship & flags
+  'flagship (y/n)':         'flagship',
+  'flagship':               'flagship',
+  'critical (y/n)':         'critical',
+  'critical':               'critical',
+  'mis (y/n)':              'mis',
+  'mis':                    'mis',
+  'third party (y/n)':      'thirdParty',
+  'third party':            'thirdParty',
+  'thirdparty':             'thirdParty',
+  'remarks':                'overallStatus',
+  'overall status':         'overallStatus',
+  'overall progress':       'overallStatus',
+  'remark':                 'overallStatus',
+  'status remark':          'overallStatus',
+  'il1 phase start':        'il1_start',
+  'il1 start':              'il1_start',
+  'il1 phase end':          'il1_end',
+  'il1 end':                'il1_end',
+  'il2 phase start':        'il2_start',
+  'il2 start':              'il2_start',
+  'il2 phase end':          'il2_end',
+  'il2 end':                'il2_end',
+  'il3 phase start':        'il3_start',
+  'il3 start':              'il3_start',
+  'il3 phase end':          'il3_end',
+  'il3 end':                'il3_end',
+  'il4 phase start':        'il4_start',
+  'il4 start':              'il4_start',
+  'il4 phase end':          'il4_end',
+  'il4 end':                'il4_end',
+  'il5 phase start':        'il5_start',
+  'il5 start':              'il5_start',
+  'il5 phase end':          'il5_end',
+  'il5 end':                'il5_end',
+  'assigned to staff id':   'assignedStaffId',
+  'staff id':               'assignedStaffId',
+  'assigned to':            'assignedStaffId',
+  'assigned':               'assignedStaffId',
+};
+
+const VALID_STATUSES = ['IL1','IL2','IL3','IL4','IL5','Live','On Hold','Cancelled'];
+
+// ── Helpers ───────────────────────────────────────────
+function toDateStr(val) {
+  if (!val) return '';
+  if (typeof val === 'number') {
+    // Excel serial date number
+    try {
+      const d = XLSX.SSF.parse_date_code(val);
+      if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+    } catch (_) {}
+  }
+  const s = String(val).trim();
+  if (!s) return '';
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
+function toBool(val) {
+  if (val === true || val === 1) return 1;
+  const s = String(val || '').trim().toLowerCase();
+  return ['y', 'yes', 'true', '1', '✓', 'x'].includes(s) ? 1 : 0;
+}
+
+function toNum(val) {
+  const n = parseFloat(String(val || '').replace(/[₹,]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function rowToProject(r) {
+  const phases = JSON.parse(r.il_phases || '[]');
+  const gp = id => phases.find(p => p.id === id) || {};
+  return {
+    _key: r.id, parentCode: r.parent_code, project: r.project,
+    theme: r.theme, division: r.division, status: r.status,
+    category: r.category, fy: r.fy,
+    liveTarget: r.live_target, liveActual: r.live_actual,
+    manhours: r.manhours, directCost: r.direct_cost,
+    proactiveDefect: r.proactive_defect, useCases: r.use_cases,
+    flagship: r.flagship === 1, mis: r.mis === 1,
+    critical: r.critical === 1, thirdParty: r.third_party === 1,
+    overallStatus: r.overall_status, il_phases: phases,
+    phases: JSON.parse(r.phases || '{}'),
+    customData: JSON.parse(r.custom_data || '{}'),
+    assignedStaffId: r.assigned_staff_id,
+    createdAt: r.created_at, updatedAt: r.updated_at,
+    // Gantt helpers
+    il1_start: gp('il1').startDate, il1_end: gp('il1').endDate,
+    il2_start: gp('il2').startDate, il2_end: gp('il2').endDate,
+    il3_start: gp('il3').startDate, il3_end: gp('il3').endDate,
+    il4_start: gp('il4').startDate, il4_end: gp('il4').endDate,
+    il5_start: gp('il5').startDate, il5_end: gp('il5').endDate,
+  };
+}
+
+function buildILPhases(row) {
+  const ILS = [
+    { id:'il1', label:'IL1 – Ideation', subtasks:['Business problem identification','BRD Preparation & refinement','Value Creation Framework (Cost benefit and ROI analysis)','Project feasibility assessment (Technology Selection)'] },
+    { id:'il2', label:'IL2 – Approval', subtasks:['Demand Approval and allocation to CoE','Project requirement discussion with D&I along with Business user','Technical feasibility assessment by DE','Project Scope finalization with BRD sign-off','Vendor Details Shared by DE for RFQ','IPR / RFQ Ring Approval','RFQ Float to vendor and Scope discussion','Technical Evaluation of Vendor Proposals','TEPO Ring (In case of Capital)','Commercial Negotiation by DE','Payment Ring Approval','Vendor Onboarding','Detailed requirement understanding through focused workshops','Wireframe & Figma preparation'] },
+    { id:'il3', label:'IL3 – Design & Development', subtasks:['Project detailed scope along with benefits','Design Approval','RFQ & Ring Approval process as in IL2 (Major Projects)','Vendor Onboarding','Solution Development','Management Reviews as per Governance Mechanism'] },
+    { id:'il4', label:'IL4 – UAT', subtasks:['User Acceptance Testing (UAT)','UAT feedbacks incorporation','UAT sign-off by User','User Manual & Training Sessions for all Users'] },
+    { id:'il5', label:'IL5 – Live', subtasks:['Live Deployment & Hypercare Support'] },
+  ];
+  return ILS.map(il => ({
+    id: il.id, label: il.label,
+    startDate: toDateStr(row[`${il.id}_start`]),
+    endDate:   toDateStr(row[`${il.id}_end`]),
+    subtasks:  il.subtasks.map(lbl => ({ label: lbl, done: false, startDate: '', endDate: '' })),
+  }));
+}
+
+// ── GET /api/projects/export ──────────────────────────
+router.get('/export', authMiddleware, (req, res) => {
+  try {
+    const rows     = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
+    const projects = rows.map(rowToProject);
+
+    const customColsStr = db.prepare("SELECT value FROM settings WHERE key='custom_columns'").get()?.value || '[]';
+    const customCols = JSON.parse(customColsStr).filter(c => c.status === 'approved');
+    
+    const DYNAMIC_HEADERS = [...MASTER_HEADERS, ...customCols.map(c => c.label)];
+
+    const wb = XLSX.utils.book_new();
+
+    // ── Sheet 1: Master Data (all 30 fields) ──────────
+    const dataRows = projects.map(p => [
+      p.parentCode  || '',
+      p.project     || '',
+      p.theme       || '',
+      p.division    || '',
+      p.status      || '',
+      p.category    || '',
+      p.fy          || '',
+      p.liveTarget  || '',
+      p.liveActual  || '',
+      p.manhours    != null ? p.manhours    : '',
+      p.directCost  != null ? p.directCost  : '',
+      p.proactiveDefect != null ? p.proactiveDefect : '',
+      p.useCases    != null ? p.useCases    : '',
+      p.flagship   ? 'Y' : 'N',
+      p.critical   ? 'Y' : 'N',
+      p.mis        ? 'Y' : 'N',
+      p.thirdParty ? 'Y' : 'N',
+      p.overallStatus || '',
+      p.il1_start  || '',
+      p.il1_end    || '',
+      p.il2_start  || '',
+      p.il2_end    || '',
+      p.il3_start  || '',
+      p.il3_end    || '',
+      p.il4_start  || '',
+      p.il4_end    || '',
+      p.il5_start  || '',
+      p.il5_end    || '',
+      p.assignedStaffId || '',
+      p.overallStatus || '',
+      ...customCols.map(c => p.customData?.[c.id] || '')
+    ]);
+
+    const ws1 = XLSX.utils.aoa_to_sheet([DYNAMIC_HEADERS, ...dataRows]);
+    // Set column widths
+    ws1['!cols'] = DYNAMIC_HEADERS.map(h => ({ wch: Math.max(String(h).length + 2, 16) }));
+    // Freeze top row
+    ws1['!freeze'] = { xSplit: 0, ySplit: 1 };
+    XLSX.utils.book_append_sheet(wb, ws1, 'Master Data');
+
+    // ── Sheet 2: Column Reference ─────────────────────
+    const refRows = [
+      ['Column Header',          'Field',          'View',                     'Example / Notes'],
+      ['Project Code',           'parentCode',     'Dashboard, Flagship',       '#A001'],
+      ['Project Name',           'project',        'All Views',                 'Vendor Portal — REQUIRED'],
+      ['Theme',                  'theme',          'All Views',                 'Digital Transformation'],
+      ['Division',               'division',       'Dashboard',                 'Finance'],
+      ['IL Status',              'status',         'All Views',                 'IL1 / IL2 / IL3 / IL4 / IL5 / Live / On Hold / Cancelled'],
+      ['Category',               'category',       'Dashboard',                 'Process Automation'],
+      ['Financial Year',         'fy',             'Dashboard',                 '2025-26'],
+      ['Live Target Date',       'liveTarget',     'Dashboard, Gantt',          '2025-12-31  (YYYY-MM-DD)'],
+      ['Live Actual Date',       'liveActual',     'Dashboard',                 '2026-01-15  (YYYY-MM-DD)'],
+      ['Man-Hours / Month',      'manhours',       'Dashboard (KPI)',            '120'],
+      ['Direct Cost (INR)',      'directCost',     'Dashboard (KPI)',            '500000'],
+      ['Proactive Defects',      'proactiveDefect','Dashboard (KPI)',            '45'],
+      ['Use Cases',              'useCases',       'Dashboard (KPI)',            '12'],
+      ['Flagship (Y/N)',         'flagship',       'Flagship page',             'Y or N'],
+      ['Critical (Y/N)',         'critical',       'Dashboard',                 'Y or N'],
+      ['MIS (Y/N)',              'mis',            'Dashboard',                 'Y or N'],
+      ['Third Party (Y/N)',      'thirdParty',     'Flagship page',             'Y or N'],
+      ['Remarks',                'overallStatus',  'Flagship, Dashboard',        'Design phase in progress...'],
+      ['IL1 Phase Start',        'il1_start',      'Gantt Chart',              '2024-04-01  (YYYY-MM-DD)'],
+      ['IL1 Phase End',          'il1_end',        'Gantt Chart',              '2024-05-15'],
+      ['IL2 Phase Start',        'il2_start',      'Gantt Chart',              '2024-05-01'],
+      ['IL2 Phase End',          'il2_end',        'Gantt Chart',              '2024-07-30'],
+      ['IL3 Phase Start',        'il3_start',      'Gantt Chart',              '2024-08-01'],
+      ['IL3 Phase End',          'il3_end',        'Gantt Chart',              '2024-11-30'],
+      ['IL4 Phase Start',        'il4_start',      'Gantt Chart',              '2024-12-01'],
+      ['IL4 Phase End',          'il4_end',        'Gantt Chart',              '2025-01-31'],
+      ['IL5 Phase Start',        'il5_start',      'Gantt Chart',              '2025-02-01'],
+      ['IL5 Phase End',          'il5_end',        'Gantt Chart',              '2025-03-15'],
+      ['Assigned To Staff ID',   'assignedStaffId','All Views',                 'EMP123'],
+      ['Overall Progress',       'overallStatus',  'All Views',                 '90% complete, UAT started'],
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(refRows);
+    ws2['!cols'] = [{ wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 46 }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Column Reference');
+
+    // ── Sheet 3: Blank Import Template ───────────────
+    const ws3 = XLSX.utils.aoa_to_sheet([DYNAMIC_HEADERS]);
+    ws3['!cols'] = DYNAMIC_HEADERS.map(h => ({ wch: Math.max(String(h).length + 2, 16) }));
+    XLSX.utils.book_append_sheet(wb, ws3, 'Import Template');
+
+    // ── Write to binary string, convert to Buffer ─────
+    // Using 'binary' → Buffer.from(,'binary') is the most reliable cross-platform method
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+    const buf   = Buffer.from(wbout, 'binary');
+
+    const filename = `PMO_Master_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buf.length);
+    res.end(buf);
+
+  } catch (err) {
+    console.error('[Export] Error:', err);
+    res.status(500).json({ error: 'Export failed: ' + err.message });
+  }
+});
+
+// ── POST /api/projects/import ─────────────────────────
+router.post('/import', authMiddleware, upload.single('file'), (req, res) => {
+  if (!['senior_manager', 'section_head'].includes(req.user.role))
+    return res.status(403).json({ error: 'Only Senior Managers and Section Heads can import.' });
+
+  if (!req.file)
+    return res.status(400).json({ error: 'No file uploaded.' });
+
+  try {
+    const wb      = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: false });
+    const sheetName = wb.SheetNames[0];
+    const sheet   = wb.Sheets[sheetName];
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    if (rawRows.length < 2)
+      return res.status(400).json({ error: 'File has no data rows (need at least a header + 1 row).' });
+
+    const customColsStr = db.prepare("SELECT value FROM settings WHERE key='custom_columns'").get()?.value || '[]';
+    const customCols = JSON.parse(customColsStr).filter(c => c.status === 'approved');
+
+    // Extend COLUMN_MAP dynamically for this request
+    const currentColumnMap = { ...COLUMN_MAP };
+    customCols.forEach(c => {
+      currentColumnMap[c.label.toLowerCase()] = `custom_${c.id}`;
+    });
+
+    // Map header labels to field names
+    const headerRow = rawRows[0].map(h => String(h || '').trim().toLowerCase());
+    const fieldMap  = headerRow.map(h => currentColumnMap[h] || null);
+
+    let imported = 0, skipped = 0;
+    const errors = [];
+    const now    = new Date().toISOString();
+
+    for (let i = 1; i < rawRows.length; i++) {
+      const raw = rawRows[i];
+      if (raw.every(c => c === '' || c == null)) continue; // blank row
+
+      // Build a row object from field map
+      const row = {};
+      const customData = {};
+      fieldMap.forEach((field, idx) => {
+        if (field) {
+          if (field.startsWith('custom_')) {
+            customData[field.replace('custom_', '')] = raw[idx];
+          } else {
+            row[field] = raw[idx];
+          }
+        }
+      });
+
+      if (!row.project || !String(row.project).trim()) {
+        skipped++;
+        continue; // Project Name is mandatory
+      }
+
+      try {
+        const id     = uuidv4();
+        const phases = buildILPhases(row);
+        const statusVal = String(row.status || '').trim();
+
+        db.prepare(`INSERT OR REPLACE INTO projects (
+          id, parent_code, project, theme, division, status, category, fy,
+          live_target, live_actual, manhours, direct_cost, proactive_defect, use_cases,
+          flagship, mis, critical, third_party, overall_status,
+          il_phases, phases, custom_data, assigned_to,
+          created_at, created_by, updated_at, updated_by
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        ).run(
+          id,
+          String(row.parentCode  || '').trim() || null,
+          String(row.project).trim(),
+          String(row.theme       || '').trim() || null,
+          String(row.division    || '').trim() || null,
+          VALID_STATUSES.includes(statusVal) ? statusVal : null,
+          String(row.category    || '').trim() || null,
+          String(row.fy          || '').trim() || null,
+          toDateStr(row.liveTarget) || null,
+          toDateStr(row.liveActual) || null,
+          toNum(row.manhours),
+          toNum(row.directCost),
+          toNum(row.proactiveDefect),
+          toNum(row.useCases),
+          toBool(row.flagship),
+          toBool(row.mis),
+          toBool(row.critical),
+          toBool(row.thirdParty),
+          String(row.overallStatus || '').trim() || null,
+          JSON.stringify(phases),
+          JSON.stringify({}),
+          JSON.stringify(customData),
+          String(row.assignedStaffId  || '').trim() || null,
+          now, req.user.email, now, req.user.email
+        );
+
+        db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
+          VALUES (?,?,?,?,?,?,?,?)`
+        ).run(uuidv4(), id, String(row.project).trim(), req.user.uid, req.user.name, req.user.role, 'imported', now);
+
+        imported++;
+      } catch (rowErr) {
+        errors.push(`Row ${i + 1} ("${row.project || '?'}"): ${rowErr.message}`);
+        skipped++;
+      }
+    }
+
+    // Broadcast updated list
+    const allRows = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
+    _broadcast('projects_changed', allRows.map(rowToProject));
+
+    res.json({ imported, skipped, errors: errors.slice(0, 20) });
+
+  } catch (err) {
+    console.error('[Import] Error:', err);
+    res.status(500).json({ error: 'Failed to parse Excel: ' + err.message });
+  }
+});
+
+module.exports = { router, setBroadcast };
