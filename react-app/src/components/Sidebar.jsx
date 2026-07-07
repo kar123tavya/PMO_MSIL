@@ -11,7 +11,7 @@ const NAV = [
 ]
 
 export default function Sidebar() {
-  const { user, logout, getRoleLabel } = useAuth()
+  const { user, logout, getRoleLabel, can } = useAuth()
   const { count } = useNotifications()
 
   return (
@@ -39,6 +39,15 @@ export default function Sidebar() {
             <span style={{ flex: 1 }}>{n.label}</span>
           </NavLink>
         ))}
+        {can('manage_users') && (
+          <NavLink
+            to="/users"
+            className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+          >
+            <span className="nav-icon">👥</span>
+            <span style={{ flex: 1 }}>Users</span>
+          </NavLink>
+        )}
 
         <div className="divider" style={{ margin: '14px 0' }} />
         <div className="nav-section-label">Info</div>

@@ -41,7 +41,7 @@ router.post('/login', (req, res) => {
 
 /* POST /api/auth/register */
 router.post('/register', (req, res) => {
-  const { email, name, staffNo, designation, password } = req.body;
+  const { email, name, staffNo, designation, role, password } = req.body;
   if (!email || !name || !password)
     return res.status(400).json({ error: 'Email, name, and password are required.' });
 
@@ -55,7 +55,7 @@ router.post('/register', (req, res) => {
   db.prepare(`
     INSERT INTO users (id, name, email, password_hash, role, staff_no, designation, status, created_at)
     VALUES (?,?,?,?,?,?,?,?,?)
-  `).run(id, name.trim(), email.trim().toLowerCase(), hash, 'deputy_manager', staffNo||'', designation||'', 'pending', now);
+  `).run(id, name.trim(), email.trim().toLowerCase(), hash, role || 'deputy_manager', staffNo||'', designation||'', 'pending', now);
 
   res.status(201).json({ message: 'Account created. Awaiting admin approval.' });
 });

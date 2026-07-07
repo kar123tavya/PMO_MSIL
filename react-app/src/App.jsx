@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard'
 import Flagship  from './pages/Flagship'
 import Gantt     from './pages/Gantt'
 import AuditLog  from './pages/AuditLog'
+import Users     from './pages/Users'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
               <Route path="/flagship" element={<ProtectedRoute><Flagship /></ProtectedRoute>} />
               <Route path="/gantt"    element={<ProtectedRoute><Gantt /></ProtectedRoute>} />
               <Route path="/audit"    element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
+              <Route path="/users"    element={<ProtectedRoute><Users /></ProtectedRoute>} />
               <Route path="*"         element={<Navigate to="/" replace />} />
             </Routes>
           </NotificationProvider>

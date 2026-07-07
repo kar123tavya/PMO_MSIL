@@ -16,6 +16,7 @@ export default function Login() {
   const [rName, setRName]     = useState('')
   const [rStaff, setRStaff]   = useState('')
   const [rDesig, setRDesig]   = useState('')
+  const [rRole, setRRole]     = useState('deputy_manager')
   const [rPass, setRPass]     = useState('')
 
   async function handleLogin(e) {
@@ -32,7 +33,7 @@ export default function Login() {
     try {
       const res  = await fetch('/api/auth/register', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: rEmail, name: rName, staffNo: rStaff, designation: rDesig, password: rPass }),
+        body: JSON.stringify({ email: rEmail, name: rName, staffNo: rStaff, designation: rDesig, role: rRole, password: rPass }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -79,6 +80,12 @@ export default function Login() {
                 <input className="login-input" type="text"     placeholder="Full Name"           value={rName}  onChange={e=>setRName(e.target.value)}  required />
                 <input className="login-input" type="text"     placeholder="Staff Number"        value={rStaff} onChange={e=>setRStaff(e.target.value)} />
                 <input className="login-input" type="text"     placeholder="Designation"         value={rDesig} onChange={e=>setRDesig(e.target.value)} />
+                <select className="login-input" value={rRole} onChange={e=>setRRole(e.target.value)}>
+                  <option value="viewer">Viewer</option>
+                  <option value="deputy_manager">Deputy Manager / Project Owner</option>
+                  <option value="section_head">Section Head</option>
+                  <option value="senior_manager">Senior Manager</option>
+                </select>
                 <input className="login-input" type="password" placeholder="Password (min 6)"    value={rPass}  onChange={e=>setRPass(e.target.value)}  required minLength={6} />
                 <button className="login-btn" type="submit" disabled={loading}>{loading ? 'Creating…' : 'Sign Up'}</button>
               </form>

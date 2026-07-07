@@ -48,7 +48,7 @@ function currentStage(p) {
 
 export default function Dashboard() {
   const { projects, loading, saveProject, deleteProject } = useProjects()
-  const { can }      = useAuth()
+  const { can, user }      = useAuth()
   const { showToast }= useToast()
 
   const [search,  setSearch]  = useState('')
@@ -275,7 +275,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      {modal && <ProjectForm project={editing} ilPhases={IL_PHASES} onSave={handleSave} onDelete={handleDelete} onClose={() => setModal(false)} saving={saving}/>}
+      {modal && <ProjectForm project={editing} readOnly={editing && user.role === 'deputy_manager' && editing.assignedStaffId !== user.email} ilPhases={IL_PHASES} onSave={handleSave} onDelete={handleDelete} onClose={() => setModal(false)} saving={saving}/>}
       {importOpen && <ImportModal onClose={() => setImportOpen(false)} onImported={() => setImportOpen(false)} />}
       {showColMgr && <ColumnManager onClose={() => setShowColMgr(false)} />}
       {approvalOpen && <ApprovalModal project={approvalData.project} changes={approvalData.changes} onClose={() => setApprovalOpen(false)} onSent={() => setApprovalOpen(false)} />}

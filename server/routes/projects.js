@@ -106,7 +106,7 @@ router.put('/:id', authMiddleware, (req, res) => {
 
   const u = req.user;
   if (u.role === 'viewer') return res.status(403).json({ error: 'Read-only access.' });
-  if (u.role === 'deputy_manager' && existing.assigned_to !== u.uid)
+  if (u.role === 'deputy_manager' && existing.assigned_to !== u.email)
     return res.status(403).json({ error: 'You can only edit projects assigned to you.' });
 
   const p   = req.body;

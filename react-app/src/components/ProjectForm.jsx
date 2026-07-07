@@ -85,7 +85,7 @@ function buildPhases(defs, saved) {
   })
 }
 
-export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClose, saving }) {
+export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClose, saving, readOnly = false }) {
   const { can } = useAuth()
   const isEdit  = !!project
 
@@ -163,13 +163,14 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
   }
 
   return (
-    <Modal open title={isEdit?'Edit Project':'Add Project'} onClose={onClose} size="xl"
+    <Modal open title={isEdit ? (readOnly ? 'View Project (Read-Only)' : 'Edit Project') : 'Add Project'} onClose={onClose} size="xl"
       footer={<>
-        {isEdit&&can('delete_project')&&<button className="btn btn-danger" style={{marginRight:'auto'}} onClick={()=>onDelete(project._key)}>Delete</button>}
-        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={submit} disabled={saving}>{saving?'Saving…':isEdit?'Update Project':'Add Project'}</button>
+        {isEdit&&can('delete_project')&&!readOnly&&<button className="btn btn-danger" style={{marginRight:'auto'}} onClick={()=>onDelete(project._key)}>Delete</button>}
+        <button className="btn btn-ghost" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</button>
+        {!readOnly && <button className="btn btn-primary" onClick={submit} disabled={saving}>{saving?'Saving…':isEdit?'Update Project':'Add Project'}</button>}
       </>}
     >
+      <div style={readOnly ? { pointerEvents: 'none', opacity: 0.95 } : {}}>
       <form onSubmit={submit}>
         <div className="form-section">
           <div className="form-section-title">Project Details</div>
@@ -326,6 +327,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
           </div>
         </div>
         </form>
+      </div>
       </Modal>
     )
   }

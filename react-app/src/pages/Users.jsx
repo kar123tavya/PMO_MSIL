@@ -1,0 +1,172 @@
+import React, { useState, useEffect } from 'react'
+import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
+import RoleBadge from '../components/RoleBadge'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+
+export default function Users() {
+  const { can, user, getRoleLabel } = useAuth()
+  const { showToast } = useToast()
+  
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  async function fetchUsers() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('pmo_session') ? JSON.parse(sessionStorage.getItem('pmo_session')).token : ''}` }
+      })
+      if (!res.ok) throw new Error('Failed to fetch')
+      const data = await res.json()
+      setUsers(data)
+    } catch (e) {
+      showToast('Could not load users.', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleApprove(uid) {
+    try {
+      const res = await fetch(`/api/users/${uid}/approve`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('pmo_session') ? JSON.parse(sessionStorage.getItem('pmo_session')).token : ''}` }
+      })
+      if (!res.ok) throw new Error('Failed to approve')
+      showToast('User approved successfully.', 'success')
+      fetchUsers()
+    } catch (e) {
+      showToast(e.message, 'error')
+    }
+  }
+
+  async function handleDelete(uid) {
+    if (!window.confirm("Are you sure you want to delete this user?")) return
+    try {
+      const res = await fetch(`/api/users/${uid}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('pmo_session') ? JSON.parse(sessionStorage.getItem('pmo_session')).token : ''}` }
+      })
+      if (!res.ok) throw new Error('Failed to delete')
+      showToast('User deleted.', 'success')
+      fetchUsers()
+    } catch (e) {
+      showToast(e.message, 'error')
+    }
+  }
+
+  async function handleRoleChange(uid, newRole) {
+    const target = users.find(u => u.uid === uid)
+    if (!target) return
+    try {
+      const res = await fetch(`/api/users`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('pmo_session') ? JSON.parse(sessionStorage.getItem('pmo_session')).token : ''}` 
+        },
+        body: JSON.stringify({ ...target, role: newRole })
+      })
+      if (!res.ok) throw new Error('Failed to update role')
+      showToast('Role updated.', 'success')
+      fetchUsers()
+    } catch (e) {
+      showToast(e.message, 'error')
+    }
+  }
+
+  if (!can('manage_users')) {
+    return (
+      <div className="app-shell">
+        <Sidebar />
+        <div className="app-main">
+          <Header title="User Management"><RoleBadge /></Header>
+          <div className="page-content" style={{textAlign: 'center', marginTop: 40}}>
+            <h2>Access Denied</h2>
+            <p>You must be a Senior Manager to view this page.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="app-shell">
+      <Sidebar />
+      <div className="app-main">
+        <Header title="User Management">
+          <RoleBadge />
+        </Header>
+
+        <div className="page-content">
+          <div className="card" style={{padding: '24px'}}>
+            <h2 style={{marginTop: 0}}>Team Members</h2>
+            <p className="text-muted">Approve new registrations and manage roles for your dashboard users.</p>
+            
+            {loading ? <p>Loading users...</p> : (
+              <div className="table-wrap" style={{marginTop: 24}}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Staff No / Desig</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(u => (
+                      <tr key={u.uid}>
+                        <td style={{fontWeight: 600}}>{u.name} {u.uid === user.uid && <span className="stage-tag" style={{marginLeft: 8}}>You</span>}</td>
+                        <td style={{fontSize: '0.85rem'}}>{u.email}</td>
+                        <td style={{fontSize: '0.85rem'}}>{u.staffNo || '—'} / {u.designation || '—'}</td>
+                        <td>
+                          {u.uid === user.uid ? (
+                            <span className="stage-tag">{getRoleLabel(u.role)}</span>
+                          ) : (
+                            <select 
+                              className="filter-select" 
+                              style={{padding: '4px', fontSize: '0.85rem', width: 'auto'}}
+                              value={u.role}
+                              onChange={(e) => handleRoleChange(u.uid, e.target.value)}
+                            >
+                              <option value="viewer">Viewer</option>
+                              <option value="deputy_manager">Deputy Manager (PIC)</option>
+                              <option value="section_head">Section Head</option>
+                              <option value="senior_manager">Senior Manager</option>
+                            </select>
+                          )}
+                        </td>
+                        <td>
+                          <span className="stage-tag" style={{background: u.status === 'active' ? '#dcfce7' : '#fef9c3', color: u.status === 'active' ? '#166534' : '#854d0e'}}>
+                            {u.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td style={{display: 'flex', gap: 8}}>
+                          {u.status === 'pending' && (
+                            <button className="btn btn-primary" style={{padding: '4px 8px', fontSize: '0.75rem'}} onClick={() => handleApprove(u.uid)}>Approve</button>
+                          )}
+                          {u.uid !== user.uid && (
+                            <button className="btn btn-ghost" style={{padding: '4px 8px', fontSize: '0.75rem', color: '#dc2626'}} onClick={() => handleDelete(u.uid)}>Delete</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
