@@ -37,39 +37,10 @@ function initExcelSync(db, masterFilePath, broadcastCb) {
   }
 
   // 2. Watch the file for changes
-  let timeout = null;
-  fs.watch(_masterFilePath, (eventType, filename) => {
-    if (eventType !== 'change' || isWriting) return;
-
-    // Debounce the watch event because some editors emit multiple 'change' events quickly
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      console.log(`[Excel Sync] Detected changes in ${_masterFilePath}. Syncing to DB...`);
-      try {
-        const buffer = fs.readFileSync(_masterFilePath);
-        // Process as 'System' user
-        const result = processExcelBuffer(
-          db, 
-          buffer, 
-          'system@localhost', 
-          'Background Sync', 
-          'admin', 
-          'SYSTEM-SYNC'
-        );
-        console.log(`[Excel Sync] DB Update complete: ${result.imported} imported, ${result.skipped} skipped.`);
-        
-        // Notify frontend via SSE so they can reload/update
-        const rows = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
-        if (broadcastCb) broadcastCb('projects_changed', rows.map(rowToProject));
-      } catch (e) {
-        if (e.code === 'EBUSY') {
-          console.warn('[Excel Sync] File is currently locked for writing by Excel. Retrying later...');
-        } else {
-          console.error('[Excel Sync] Import failed:', e.message);
-        }
-      }
-    }, 500); // 500ms debounce
-  });
+  // WARNING: We have disabled fs.watch() because if the user leaves the Excel file open,
+  // changes in the web app fail to write (EBUSY). Then when Excel finally saves, it 
+  // overwrites the database with stale data from the morning. 
+  // All Excel imports must now be done manually via the Web UI Import button.
 }
 
 module.exports = { initExcelSync, triggerExcelRewrite };
