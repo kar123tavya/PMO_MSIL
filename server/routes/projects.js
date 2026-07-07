@@ -50,7 +50,7 @@ function getAllRows() {
 /* GET /api/projects */
 router.get('/', authMiddleware, (req, res) => {
   let projects = getAllRows();
-  if (req.user.role === 'section_head') {
+  if (req.user.role === 'section_head' && req.user.division) {
     projects = projects.filter(p => p.division === req.user.division);
   }
   res.json(projects);

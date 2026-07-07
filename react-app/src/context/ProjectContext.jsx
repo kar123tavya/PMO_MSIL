@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '../api/client'
 import { useSSE } from '../api/useSSE'
+import { useAuth } from './AuthContext'
 
 const ProjectContext = createContext(null)
 
@@ -37,15 +38,19 @@ export function ProjectProvider({ children }) {
     } catch (e) { console.error('Failed to fetch settings', e) }
   }, [])
 
+  const { user } = useAuth()
+
   useEffect(() => {
-    const session = sessionStorage.getItem('pmo_session')
-    if (!session) {
+    if (!user) {
+        setProjects([])
+        setUsers([])
         setLoading(false)
         return
     }
+    setLoading(true)
     Promise.all([fetchProjects(), fetchUsers(), fetchSettings()])
       .finally(() => setLoading(false))
-  }, [fetchProjects, fetchUsers, fetchSettings])
+  }, [user, fetchProjects, fetchUsers, fetchSettings])
 
   useSSE((event, data) => {
     if (event === 'projects_changed') setProjects(data)
