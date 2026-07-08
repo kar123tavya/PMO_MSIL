@@ -48,17 +48,6 @@ const MASTER_HEADERS = [
   'MIS (Y/N)',           // mis
   'Third Party (Y/N)',   // thirdParty
   'Remarks',             // overallStatus
-  // ─── Gantt / IL Timeline ──────────────────────
-  'IL1 Phase Start',     // il1_start       (YYYY-MM-DD)
-  'IL1 Phase End',       // il1_end
-  'IL2 Phase Start',     // il2_start
-  'IL2 Phase End',       // il2_end
-  'IL3 Phase Start',     // il3_start
-  'IL3 Phase End',       // il3_end
-  'IL4 Phase Start',     // il4_start
-  'IL4 Phase End',       // il4_end
-  'IL5 Phase Start',     // il5_start
-  'IL5 Phase End',       // il5_end
   'Assigned To Staff ID',
   'Overall Progress'
 ];
@@ -100,29 +89,29 @@ const COLUMN_MAP = {
   'thirdparty':             'thirdParty',
   'remarks':                'overallStatus',
   'overall status':         'overallStatus',
-  'overall progress':       'overallStatus',
   'remark':                 'overallStatus',
-  'status remark':          'overallStatus',
-  'il1 phase start':        'il1_start',
-  'il1 start':              'il1_start',
-  'il1 phase end':          'il1_end',
-  'il1 end':                'il1_end',
-  'il2 phase start':        'il2_start',
-  'il2 start':              'il2_start',
-  'il2 phase end':          'il2_end',
-  'il2 end':                'il2_end',
-  'il3 phase start':        'il3_start',
-  'il3 start':              'il3_start',
-  'il3 phase end':          'il3_end',
-  'il3 end':                'il3_end',
-  'il4 phase start':        'il4_start',
-  'il4 start':              'il4_start',
-  'il4 phase end':          'il4_end',
-  'il4 end':                'il4_end',
-  'il5 phase start':        'il5_start',
-  'il5 start':              'il5_start',
-  'il5 phase end':          'il5_end',
-  'il5 end':                'il5_end',
+  'overall progress':       'overallStatus',
+  // Phase Dates
+  'il1 target start':       'IL1 Target Start',
+  'il1 target end':         'IL1 Target End',
+  'il1 actual start':       'IL1 Actual Start',
+  'il1 actual end':         'IL1 Actual End',
+  'il2 target start':       'IL2 Target Start',
+  'il2 target end':         'IL2 Target End',
+  'il2 actual start':       'IL2 Actual Start',
+  'il2 actual end':         'IL2 Actual End',
+  'il3 target start':       'IL3 Target Start',
+  'il3 target end':         'IL3 Target End',
+  'il3 actual start':       'IL3 Actual Start',
+  'il3 actual end':         'IL3 Actual End',
+  'il4 target start':       'IL4 Target Start',
+  'il4 target end':         'IL4 Target End',
+  'il4 actual start':       'IL4 Actual Start',
+  'il4 actual end':         'IL4 Actual End',
+  'il5 target start':       'IL5 Target Start',
+  'il5 target end':         'IL5 Target End',
+  'il5 actual start':       'IL5 Actual Start',
+  'il5 actual end':         'IL5 Actual End',
   'assigned to staff id':   'assignedStaffId',
   'staff id':               'assignedStaffId',
   'assigned to':            'assignedStaffId',
@@ -175,12 +164,13 @@ function rowToProject(r) {
     customData: JSON.parse(r.custom_data || '{}'),
     assignedStaffId: r.assigned_staff_id,
     createdAt: r.created_at, updatedAt: r.updated_at,
+    createdAt: r.created_at, updatedAt: r.updated_at,
     // Gantt helpers
-    il1_start: gp('il1').startDate, il1_end: gp('il1').endDate,
-    il2_start: gp('il2').startDate, il2_end: gp('il2').endDate,
-    il3_start: gp('il3').startDate, il3_end: gp('il3').endDate,
-    il4_start: gp('il4').startDate, il4_end: gp('il4').endDate,
-    il5_start: gp('il5').startDate, il5_end: gp('il5').endDate,
+    il1_ts: gp('il1').targetStart, il1_te: gp('il1').targetEnd, il1_as: gp('il1').actualStart, il1_ae: gp('il1').actualEnd,
+    il2_ts: gp('il2').targetStart, il2_te: gp('il2').targetEnd, il2_as: gp('il2').actualStart, il2_ae: gp('il2').actualEnd,
+    il3_ts: gp('il3').targetStart, il3_te: gp('il3').targetEnd, il3_as: gp('il3').actualStart, il3_ae: gp('il3').actualEnd,
+    il4_ts: gp('il4').targetStart, il4_te: gp('il4').targetEnd, il4_as: gp('il4').actualStart, il4_ae: gp('il4').actualEnd,
+    il5_ts: gp('il5').targetStart, il5_te: gp('il5').targetEnd, il5_as: gp('il5').actualStart, il5_ae: gp('il5').actualEnd,
   };
 }
 
@@ -194,8 +184,10 @@ function buildILPhases(row) {
   ];
   return ILS.map(il => ({
     id: il.id, label: il.label,
-    startDate: toDateStr(row[`${il.id}_start`]),
-    endDate:   toDateStr(row[`${il.id}_end`]),
+    targetStart: toDateStr(row[`${il.id.toUpperCase()} Target Start`]),
+    targetEnd:   toDateStr(row[`${il.id.toUpperCase()} Target End`]),
+    actualStart: toDateStr(row[`${il.id.toUpperCase()} Actual Start`]),
+    actualEnd:   toDateStr(row[`${il.id.toUpperCase()} Actual End`]),
     subtasks:  il.subtasks.map(lbl => ({ label: lbl, done: false, startDate: '', endDate: '' })),
   }));
 }
@@ -235,16 +227,11 @@ function generateExcelBuffer(db) {
       p.mis        ? 'Y' : 'N',
       p.thirdParty ? 'Y' : 'N',
       p.overallStatus || '',
-      p.il1_start  || '',
-      p.il1_end    || '',
-      p.il2_start  || '',
-      p.il2_end    || '',
-      p.il3_start  || '',
-      p.il3_end    || '',
-      p.il4_start  || '',
-      p.il4_end    || '',
-      p.il5_start  || '',
-      p.il5_end    || '',
+      p.il1_ts || '', p.il1_te || '', p.il1_as || '', p.il1_ae || '',
+      p.il2_ts || '', p.il2_te || '', p.il2_as || '', p.il2_ae || '',
+      p.il3_ts || '', p.il3_te || '', p.il3_as || '', p.il3_ae || '',
+      p.il4_ts || '', p.il4_te || '', p.il4_as || '', p.il4_ae || '',
+      p.il5_ts || '', p.il5_te || '', p.il5_as || '', p.il5_ae || '',
       p.assignedStaffId || '',
       p.overallStatus || '',
       ...customCols.map(c => p.customData?.[c.id] || '')
@@ -288,16 +275,26 @@ function generateExcelBuffer(db) {
       ['MIS (Y/N)',              'mis',            'Dashboard',                 'Y or N'],
       ['Third Party (Y/N)',      'thirdParty',     'Flagship page',             'Y or N'],
       ['Remarks',                'overallStatus',  'Flagship, Dashboard',        'Design phase in progress...'],
-      ['IL1 Phase Start',        'il1_start',      'Gantt Chart',              '2024-04-01  (YYYY-MM-DD)'],
-      ['IL1 Phase End',          'il1_end',        'Gantt Chart',              '2024-05-15'],
-      ['IL2 Phase Start',        'il2_start',      'Gantt Chart',              '2024-05-01'],
-      ['IL2 Phase End',          'il2_end',        'Gantt Chart',              '2024-07-30'],
-      ['IL3 Phase Start',        'il3_start',      'Gantt Chart',              '2024-08-01'],
-      ['IL3 Phase End',          'il3_end',        'Gantt Chart',              '2024-11-30'],
-      ['IL4 Phase Start',        'il4_start',      'Gantt Chart',              '2024-12-01'],
-      ['IL4 Phase End',          'il4_end',        'Gantt Chart',              '2025-01-31'],
-      ['IL5 Phase Start',        'il5_start',      'Gantt Chart',              '2025-02-01'],
-      ['IL5 Phase End',          'il5_end',        'Gantt Chart',              '2025-03-15'],
+      ['IL1 Target Start',       'IL1 Target Start', 'Gantt Chart',              '2024-04-01'],
+      ['IL1 Target End',         'IL1 Target End',   'Gantt Chart',              '2024-05-15'],
+      ['IL1 Actual Start',       'IL1 Actual Start', 'Gantt Chart',              '2024-04-05'],
+      ['IL1 Actual End',         'IL1 Actual End',   'Gantt Chart',              '2024-05-20'],
+      ['IL2 Target Start',       'IL2 Target Start', 'Gantt Chart',              '2024-05-01'],
+      ['IL2 Target End',         'IL2 Target End',   'Gantt Chart',              '2024-07-30'],
+      ['IL2 Actual Start',       'IL2 Actual Start', 'Gantt Chart',              '2024-05-01'],
+      ['IL2 Actual End',         'IL2 Actual End',   'Gantt Chart',              '2024-07-30'],
+      ['IL3 Target Start',       'IL3 Target Start', 'Gantt Chart',              '2024-08-01'],
+      ['IL3 Target End',         'IL3 Target End',   'Gantt Chart',              '2024-11-30'],
+      ['IL3 Actual Start',       'IL3 Actual Start', 'Gantt Chart',              '2024-08-01'],
+      ['IL3 Actual End',         'IL3 Actual End',   'Gantt Chart',              '2024-11-30'],
+      ['IL4 Target Start',       'IL4 Target Start', 'Gantt Chart',              '2024-12-01'],
+      ['IL4 Target End',         'IL4 Target End',   'Gantt Chart',              '2025-01-31'],
+      ['IL4 Actual Start',       'IL4 Actual Start', 'Gantt Chart',              '2024-12-01'],
+      ['IL4 Actual End',         'IL4 Actual End',   'Gantt Chart',              '2025-01-31'],
+      ['IL5 Target Start',       'IL5 Target Start', 'Gantt Chart',              '2025-02-01'],
+      ['IL5 Target End',         'IL5 Target End',   'Gantt Chart',              '2025-03-15'],
+      ['IL5 Actual Start',       'IL5 Actual Start', 'Gantt Chart',              '2025-02-01'],
+      ['IL5 Actual End',         'IL5 Actual End',   'Gantt Chart',              '2025-03-15'],
       ['Assigned To Staff ID',   'assignedStaffId','All Views',                 'EMP123'],
       ['Overall Progress',       'overallStatus',  'All Views',                 '90% complete, UAT started'],
     ];
@@ -409,8 +406,10 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
              const oldP = oldPhases.find(op => op.id === newP.id);
              if (oldP) {
                  // Keep the old subtasks, color, showArrow etc, just update dates!
-                 oldP.startDate = newP.startDate;
-                 oldP.endDate = newP.endDate;
+                 oldP.targetStart = newP.targetStart;
+                 oldP.targetEnd = newP.targetEnd;
+                 oldP.actualStart = newP.actualStart;
+                 oldP.actualEnd = newP.actualEnd;
                  return oldP;
              }
              return newP;
