@@ -215,7 +215,8 @@ function generateExcelBuffer(db) {
   const wb = XLSX.utils.book_new();
 
   // ── Sheet 1: Master Data (all 30 fields) ──────────
-    const dataRows = projects.map(p => [
+    const dataRows = projects.map(p => {
+      const rowArray = [
       p.parentCode  || '',
       p.project     || '',
       p.theme       || '',
