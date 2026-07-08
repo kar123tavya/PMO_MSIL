@@ -74,12 +74,18 @@ function buildPhases(defs, saved) {
     return {
       id: il.id, label: il.label,
       startDate: s?.startDate||'', endDate: s?.endDate||'',
+      targetStart: s?.targetStart||'', targetEnd: s?.targetEnd||'',
+      actualStart: s?.actualStart||'', actualEnd: s?.actualEnd||'',
       showArrow: s?.showArrow||false, phaseColor: s?.phaseColor||'',
       status: s?.status||'', done: s?.done||false,
       subtasks: il.subtasks.map((lbl,i)=>({
         label: lbl, done: s?.subtasks?.[i]?.done||false,
         startDate: s?.subtasks?.[i]?.startDate||'',
         endDate:   s?.subtasks?.[i]?.endDate||'',
+        targetStart: s?.subtasks?.[i]?.targetStart||'',
+        targetEnd:   s?.subtasks?.[i]?.targetEnd||'',
+        actualStart: s?.subtasks?.[i]?.actualStart||'',
+        actualEnd:   s?.subtasks?.[i]?.actualEnd||'',
       }))
     }
   })

@@ -7,6 +7,62 @@ const { db, uuidv4 } = require('../db/schema');
 const { authMiddleware } = require('../middleware/auth');
 const { triggerExcelRewrite } = require('../services/excelSyncService');
 
+function computeDiffs(p, existing) {
+  const diffs = [];
+  const m = {
+    project: 'Project Name', theme: 'Theme', division: 'Division', status: 'Status', category: 'Category', fy: 'FY',
+    liveTarget: 'live_target', liveActual: 'live_actual', manhours: 'Manhours', directCost: 'direct_cost', proactiveDefect: 'proactive_defect', useCases: 'use_cases',
+    flagship: 'Flagship', mis: 'MIS', critical: 'Critical', thirdParty: 'third_party', overallStatus: 'overall_status', assignedStaffId: 'assigned_staff_id'
+  };
+  const labels = {
+    live_target: 'Live Target', live_actual: 'Live Actual', direct_cost: 'Direct Cost', proactive_defect: 'Proactive Defect', use_cases: 'Use Cases',
+    third_party: 'Third Party', overall_status: 'Overall Status', assigned_staff_id: 'Assigned Staff ID'
+  };
+  
+  for (const [jsonKey, snakeKeyOrLabel] of Object.entries(m)) {
+    const snakeKey = labels[snakeKeyOrLabel] ? snakeKeyOrLabel : jsonKey.toLowerCase();
+    const label = labels[snakeKeyOrLabel] || snakeKeyOrLabel;
+    
+    let from = existing[snakeKey];
+    let to = p[jsonKey];
+    if (typeof to === 'boolean') to = to ? 1 : 0;
+    
+    if (String(from || '') !== String(to || '')) {
+       diffs.push({ field: label, from: String(from || ''), to: String(to || '') });
+    }
+  }
+  
+  try {
+    const oldPhases = JSON.parse(existing.il_phases || '[]');
+    const newPhases = p.il_phases || [];
+    newPhases.forEach(nph => {
+      const oph = oldPhases.find(x => x.id === nph.id);
+      if (oph) {
+         if (String(oph.targetStart||'') !== String(nph.targetStart||'')) diffs.push({ field: `${nph.id.toUpperCase()} Target Start`, from: oph.targetStart||'', to: nph.targetStart||'' });
+         if (String(oph.targetEnd||'') !== String(nph.targetEnd||'')) diffs.push({ field: `${nph.id.toUpperCase()} Target End`, from: oph.targetEnd||'', to: nph.targetEnd||'' });
+         if (String(oph.actualStart||'') !== String(nph.actualStart||'')) diffs.push({ field: `${nph.id.toUpperCase()} Actual Start`, from: oph.actualStart||'', to: nph.actualStart||'' });
+         if (String(oph.actualEnd||'') !== String(nph.actualEnd||'')) diffs.push({ field: `${nph.id.toUpperCase()} Actual End`, from: oph.actualEnd||'', to: nph.actualEnd||'' });
+         
+         if (oph.phaseColor !== nph.phaseColor) diffs.push({ field: `${nph.id.toUpperCase()} Color`, from: oph.phaseColor||'', to: nph.phaseColor||'' });
+         
+         const oldSubs = oph.subtasks || [];
+         const newSubs = nph.subtasks || [];
+         newSubs.forEach((nst, i) => {
+            const ost = oldSubs[i];
+            if (ost) {
+              if (ost.done !== nst.done) diffs.push({ field: `${nph.id.toUpperCase()} Subtask [${nst.label||i}] Done`, from: ost.done?'Yes':'No', to: nst.done?'Yes':'No' });
+              if (String(ost.targetStart||'') !== String(nst.targetStart||'')) diffs.push({ field: `${nph.id.toUpperCase()} Subtask [${nst.label||i}] Target Start`, from: ost.targetStart||'', to: nst.targetStart||'' });
+              if (String(ost.targetEnd||'') !== String(nst.targetEnd||'')) diffs.push({ field: `${nph.id.toUpperCase()} Subtask [${nst.label||i}] Target End`, from: ost.targetEnd||'', to: nst.targetEnd||'' });
+              if (String(ost.actualStart||'') !== String(nst.actualStart||'')) diffs.push({ field: `${nph.id.toUpperCase()} Subtask [${nst.label||i}] Actual Start`, from: ost.actualStart||'', to: nst.actualStart||'' });
+              if (String(ost.actualEnd||'') !== String(nst.actualEnd||'')) diffs.push({ field: `${nph.id.toUpperCase()} Subtask [${nst.label||i}] Actual End`, from: ost.actualEnd||'', to: nst.actualEnd||'' });
+            }
+         });
+      }
+    });
+  } catch(e) { console.error('Diff error', e) }
+  return diffs;
+}
+
 let _broadcast = () => {};
 function setBroadcast(fn) { _broadcast = fn; }
 
@@ -156,8 +212,17 @@ router.put('/:id', authMiddleware, (req, res) => {
     }
   }
 
-  db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
-    VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), req.params.id, p.project, u.uid, u.name, u.role, 'updated', now);
+  const diffs = computeDiffs(p, existing);
+
+  if (diffs.length > 0) {
+    const stmt = db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,field_name,from_val,to_val,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+    for (const d of diffs) {
+      stmt.run(uuidv4(), req.params.id, p.project, u.uid, u.name, u.role, 'updated', d.field, d.from, d.to, now);
+    }
+  } else {
+    db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
+      VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), req.params.id, p.project, u.uid, u.name, u.role, 'updated', now);
+  }
 
   _broadcast('projects_changed', getAllRows());
   triggerExcelRewrite(db);
@@ -198,10 +263,20 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
     req.params.id
   );
 
+  const diffs = computeDiffs(p, existing);
+
   db.prepare("UPDATE notifications SET status = 'approved', updated_at = ? WHERE id = ?").run(now, notifId);
 
-  db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
-    VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), req.params.id, p.project, req.user.uid, req.user.name, req.user.role, 'edit_approved', now);
+  if (diffs.length > 0) {
+    const stmt = db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,field_name,from_val,to_val,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+    // Note: use notif.from_user and notif.from_name as the author of the edits
+    for (const d of diffs) {
+      stmt.run(uuidv4(), req.params.id, p.project, notif.from_user, notif.from_name, 'deputy_manager', 'edit_approved', d.field, d.from, d.to, now);
+    }
+  } else {
+    db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
+      VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), req.params.id, p.project, notif.from_user, notif.from_name, 'deputy_manager', 'edit_approved', now);
+  }
 
   _broadcast('projects_changed', getAllRows());
   _broadcast('notifications_changed', db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all());
