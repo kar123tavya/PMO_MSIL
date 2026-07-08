@@ -50,6 +50,11 @@ const MASTER_HEADERS = [
   'Remarks',             // overallStatus
   'Assigned To Staff ID',
   'Overall Progress',
+  'IL1 Target Start', 'IL1 Target End', 'IL1 Actual Start', 'IL1 Actual End',
+  'IL2 Target Start', 'IL2 Target End', 'IL2 Actual Start', 'IL2 Actual End',
+  'IL3 Target Start', 'IL3 Target End', 'IL3 Actual Start', 'IL3 Actual End',
+  'IL4 Target Start', 'IL4 Target End', 'IL4 Actual Start', 'IL4 Actual End',
+  'IL5 Target Start', 'IL5 Target End', 'IL5 Actual Start', 'IL5 Actual End',
   // ─── Legacy Hidden Columns ───────────────────────
   'Project Type',
   'Parent code',
@@ -62,7 +67,9 @@ const MASTER_HEADERS = [
 const COLUMN_MAP = {
   // dashboard
   'project code':           'parentCode',
+  'parent code':            'parentCode',
   'project name':           'project',
+  'project':                'project',
   'theme':                  'theme',
   'division':               'division',
   'il status':              'status',
@@ -421,16 +428,58 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
           phases = phases.map(newP => {
              const oldP = oldPhases.find(op => op.id === newP.id);
              if (oldP) {
-                 // Keep the old subtasks, color, showArrow etc, just update dates!
-                 oldP.targetStart = newP.targetStart;
-                 oldP.targetEnd = newP.targetEnd;
-                 oldP.actualStart = newP.actualStart;
-                 oldP.actualEnd = newP.actualEnd;
+                 // Only overwrite if the new date string is provided (not empty)
+                 // This protects against wiping dates when headers are missing
+                 if (newP.targetStart) oldP.targetStart = newP.targetStart;
+                 if (newP.targetEnd) oldP.targetEnd = newP.targetEnd;
+                 if (newP.actualStart) oldP.actualStart = newP.actualStart;
+                 if (newP.actualEnd) oldP.actualEnd = newP.actualEnd;
                  return oldP;
              }
              return newP;
           });
         } catch(e) {}
+      } else {
+        // --- NEW PROJECT: Auto-generate QAQD Code if missing ---
+        if (!row.parentCode || !String(row.parentCode).trim()) {
+          let fyCode = '0000';
+          if (row.fy) {
+            const nums = String(row.fy).match(/\d+/g);
+            if (nums && nums.length >= 2) {
+              let yr1 = nums[0].slice(-2);
+              let yr2 = nums[1].slice(-2);
+              fyCode = yr1 + yr2;
+            }
+          } else {
+            const dt = new Date();
+            const yr = dt.getFullYear();
+            const mo = dt.getMonth() + 1;
+            let yr1 = mo >= 4 ? yr : yr - 1;
+            let yr2 = yr1 + 1;
+            fyCode = String(yr1).slice(-2) + String(yr2).slice(-2);
+          }
+      
+          const likePattern = `${fyCode}QAQD-%`;
+          const codeRows = db.prepare('SELECT parent_code FROM projects WHERE parent_code LIKE ?').all(likePattern);
+          
+          let maxNum = 0;
+          codeRows.forEach(r => {
+            if (r.parent_code) {
+              const parts = r.parent_code.split('-');
+              if (parts.length === 2) {
+                const num = parseInt(parts[1], 10);
+                if (!isNaN(num) && num > maxNum) maxNum = num;
+              }
+            }
+          });
+          const nextNum = maxNum + 1;
+          const nextNumStr = String(nextNum).padStart(3, '0');
+          row.parentCode = `${fyCode}QAQD-${nextNumStr}`;
+          
+          // Force it to be in the database before the next iteration
+          // so that sequential imports of new projects don't all get -001
+          db.prepare('INSERT INTO projects (id, parent_code, project) VALUES (?, ?, ?)').run(id, row.parentCode, String(row.project).trim());
+        }
       }
 
       const statusVal = String(row.status || '').trim();
