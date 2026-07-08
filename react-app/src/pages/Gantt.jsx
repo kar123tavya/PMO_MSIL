@@ -115,7 +115,7 @@ export default function Gantt() {
 
   const filtered = useMemo(()=>
     projects.filter(p=>
-      (p.il_phases||[]).some(il=>il.startDate||il.endDate) &&
+      (p.il_phases||[]).some(il=>il.targetStart||il.targetEnd||il.actualStart||il.actualEnd||(il.subtasks||[]).some(st=>st.startDate||st.endDate)) &&
       (!search||(p.project||'').toLowerCase().includes(search.toLowerCase())) &&
       (!isolatedProjKey || p._key === isolatedProjKey)
     ),
