@@ -126,7 +126,40 @@ router.post('/', authMiddleware, (req, res) => {
 
   const p   = req.body;
   const id  = uuidv4();
-  const now = new Date().toISOString();
+  const now = new Date();
+  
+  let pCode = p.parentCode;
+  if (!pCode) {
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    let divCode = 'XX';
+    if (p.division && typeof p.division === 'string') {
+      const words = p.division.trim().split(/[\s&]+/);
+      if (words.length >= 2) {
+        divCode = (words[0][0] + words[1][0]).toUpperCase();
+      } else {
+        divCode = p.division.substring(0, 2).toUpperCase();
+      }
+    }
+    // Numbering is per year (yy) and division (divCode)
+    const likePattern = `${yy}%${divCode} - %`;
+    const rows = db.prepare('SELECT parent_code FROM projects WHERE parent_code LIKE ?').all(likePattern);
+    
+    let maxNum = 0;
+    rows.forEach(r => {
+      if (r.parent_code) {
+        const parts = r.parent_code.split(' - ');
+        if (parts.length === 2) {
+          const num = parseInt(parts[1], 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      }
+    });
+    const nextNum = maxNum + 1;
+    pCode = `${yy}${mm}${divCode} - ${nextNum}`;
+  }
+  
+  const nowIso = now.toISOString();
 
   db.prepare(`INSERT INTO projects (
     id, parent_code, project, theme, division, status, category, fy,
@@ -136,7 +169,7 @@ router.post('/', authMiddleware, (req, res) => {
     created_at, created_by, updated_at, updated_by
   ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
-    id, p.parentCode||null, p.project, p.theme||null, p.division||null,
+    id, pCode, p.project, p.theme||null, p.division||null,
     p.status||null, p.category||null, p.fy||null,
     p.liveTarget||null, p.liveActual||null,
     p.manhours||null, p.directCost||null, p.proactiveDefect||null, p.useCases||null,
@@ -144,11 +177,11 @@ router.post('/', authMiddleware, (req, res) => {
     p.overallStatus||null,
     JSON.stringify(p.il_phases||[]), JSON.stringify(p.phases||{}), JSON.stringify(p.customData||{}),
     p.assignedTo||null, p.assignedStaffId||null,
-    now, req.user.email, now, req.user.email
+    nowIso, req.user.email, nowIso, req.user.email
   );
 
   db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
-    VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), id, p.project, req.user.uid, req.user.name, req.user.role, 'created', now);
+    VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), id, p.project, req.user.uid, req.user.name, req.user.role, 'created', nowIso);
 
   _broadcast('projects_changed', getAllRows());
   triggerExcelRewrite(db);
