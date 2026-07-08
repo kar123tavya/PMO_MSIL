@@ -200,6 +200,8 @@ function buildILPhases(row) {
   }));
 }
 
+const crypto = require('crypto');
+
 // ── Core Export Function ──────────────────────────────
 function generateExcelBuffer(db) {
   const rows     = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
@@ -245,7 +247,17 @@ function generateExcelBuffer(db) {
       p.assignedStaffId || '',
       p.overallStatus || '',
       ...customCols.map(c => p.customData?.[c.id] || '')
-    ]);
+    ];
+    
+    const hashStr = JSON.stringify(rowArray.map(String).map(s => s.trim()));
+    const hash = crypto.createHash('md5').update(hashStr).digest('hex');
+    try {
+      db.prepare('UPDATE projects SET last_exported_hash = ? WHERE id = ?').run(hash, p._key);
+    } catch(e) {
+      // Ignore if migration hasn't run yet
+    }
+    return rowArray;
+  });
 
     const ws1 = XLSX.utils.aoa_to_sheet([DYNAMIC_HEADERS, ...dataRows]);
     // Set column widths
@@ -367,23 +379,40 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
     }
 
     try {
+      const hashStr = JSON.stringify(raw.map(String).map(s => s.trim()));
+      const rowHash = crypto.createHash('md5').update(hashStr).digest('hex');
+
       // Find existing project by name if parentCode matches, else by name only
       // Usually import just matches by Project Name if no ID, but we do INSERT OR REPLACE
       // We need a stable ID if it exists.
       let id = uuidv4();
-      const existing = db.prepare('SELECT id FROM projects WHERE project = ?').get(String(row.project).trim());
-      if (existing) id = existing.id;
+      let isExisting = false;
+      
+      const existing = db.prepare('SELECT id, last_exported_hash FROM projects WHERE project = ?').get(String(row.project).trim());
+      if (existing) {
+        // If the hash is exactly what we last exported, the human did not edit this row in Excel!
+        // We skip it to protect any newer edits made via the Web UI.
+        if (existing.last_exported_hash === rowHash) {
+          skipped++;
+          continue;
+        }
+        id = existing.id;
+        isExisting = true;
+      }
 
       const phases = buildILPhases(row);
       const statusVal = String(row.status || '').trim();
 
+      // If we are updating an existing row, we shouldn't overwrite last_exported_hash here
+      // so it remains out of sync until a new Export happens, OR we can set it to the new hash.
+      // But INSERT OR REPLACE will wipe out last_exported_hash if we don't include it.
       db.prepare(`INSERT OR REPLACE INTO projects (
         id, parent_code, project, theme, division, status, category, fy,
         live_target, live_actual, manhours, direct_cost, proactive_defect, use_cases,
         flagship, mis, critical, third_party, overall_status,
-        il_phases, phases, custom_data, assigned_staff_id,
+        il_phases, phases, custom_data, assigned_staff_id, last_exported_hash,
         created_at, created_by, updated_at, updated_by
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
         id,
         String(row.parentCode  || '').trim() || null,
@@ -408,6 +437,7 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
         JSON.stringify({}),
         JSON.stringify(customData),
         String(row.assignedStaffId  || '').trim() || null,
+        rowHash,
         now, userEmail, now, userEmail
       );
 

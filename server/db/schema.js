@@ -143,6 +143,10 @@ function initSchema() {
     );
   `);
 
+  /* ── Migrations ── */
+  try { db.exec('ALTER TABLE projects ADD COLUMN assigned_staff_id TEXT;'); } catch(e) { /* ignores if exists */ }
+  try { db.exec('ALTER TABLE projects ADD COLUMN last_exported_hash TEXT;'); } catch(e) { /* ignores if exists */ }
+
   /* ── Seed default admin if no users exist ── */
   const userCount = db.prepare('SELECT COUNT(*) AS cnt FROM users').get();
   if (userCount.cnt === 0) {
