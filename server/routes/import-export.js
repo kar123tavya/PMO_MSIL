@@ -389,7 +389,9 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
       let id = uuidv4();
       let isExisting = false;
       
-      const existing = db.prepare('SELECT id, last_exported_hash FROM projects WHERE project = ?').get(String(row.project).trim());
+      let phases = buildILPhases(row);
+      
+      const existing = db.prepare('SELECT id, last_exported_hash, il_phases FROM projects WHERE project = ?').get(String(row.project).trim());
       if (existing) {
         // If the hash is exactly what we last exported, the human did not edit this row in Excel!
         // We skip it to protect any newer edits made via the Web UI.
@@ -399,9 +401,23 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
         }
         id = existing.id;
         isExisting = true;
+        
+        // PRESERVE granular subtask data and colors which don't exist in Excel!
+        try {
+          const oldPhases = JSON.parse(existing.il_phases || '[]');
+          phases = phases.map(newP => {
+             const oldP = oldPhases.find(op => op.id === newP.id);
+             if (oldP) {
+                 // Keep the old subtasks, color, showArrow etc, just update dates!
+                 oldP.startDate = newP.startDate;
+                 oldP.endDate = newP.endDate;
+                 return oldP;
+             }
+             return newP;
+          });
+        } catch(e) {}
       }
 
-      const phases = buildILPhases(row);
       const statusVal = String(row.status || '').trim();
 
       // If we are updating an existing row, we shouldn't overwrite last_exported_hash here
