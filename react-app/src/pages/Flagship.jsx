@@ -53,13 +53,33 @@ export default function Flagship() {
     }).catch(console.error)
   }, [showColMgr])
 
-  const flagships = useMemo(()=>
-    projects.filter(p=>p.flagship)
+  const flagships = useMemo(() => {
+    let arr = projects.filter(p=>p.flagship)
       .filter(p=>!search||(p.project||'').toLowerCase().includes(search.toLowerCase()))
       .filter(p=>!filterTheme||p.theme === filterTheme)
-      .filter(p=>!filterDiv||p.division === filterDiv),
-    [projects, search, filterTheme, filterDiv]
-  )
+      .filter(p=>!filterDiv||p.division === filterDiv);
+    
+    // Sort by theme so they group together
+    arr.sort((a,b) => (a.theme||'—').localeCompare(b.theme||'—'));
+    return arr;
+  }, [projects, search, filterTheme, filterDiv])
+
+  const themeSpans = useMemo(() => {
+    const spans = [];
+    for (let i = 0; i < flagships.length; i++) {
+      if (i === 0 || (flagships[i].theme||'—') !== (flagships[i-1].theme||'—')) {
+        let count = 1;
+        for (let j = i + 1; j < flagships.length; j++) {
+          if ((flagships[j].theme||'—') === (flagships[i].theme||'—')) count++;
+          else break;
+        }
+        spans.push(count);
+      } else {
+        spans.push(0); // 0 means do not render this cell
+      }
+    }
+    return spans;
+  }, [flagships]);
 
   const allThemes = useMemo(()=> [...new Set(projects.filter(p=>p.flagship&&p.theme).map(p=>p.theme))].sort(), [projects])
   const allDivs   = useMemo(()=> [...new Set(projects.filter(p=>p.flagship&&p.division).map(p=>p.division))].sort(), [projects])
@@ -175,11 +195,13 @@ export default function Flagship() {
                 )}
                 {flagships.map((p, idx) => (
                   <tr key={p._key} className={idx % 2 === 0 ? "row-even" : "row-odd"} style={{background: '#fff', borderBottom: '1px solid var(--border)'}}>
-                    <td style={{background:'#fff', borderRight:'1px solid var(--border)', verticalAlign:'middle', padding:'12px 10px'}}>
-                      <div style={{background:'#e2e8f0', color:'#334155', padding:'4px 8px', borderRadius:'12px', fontSize:'0.7rem', fontWeight:600, display:'inline-block'}}>
-                        {p.theme || '—'}
-                      </div>
-                    </td>
+                    {themeSpans[idx] > 0 && (
+                      <td rowSpan={themeSpans[idx]} style={{background:'#fff', borderRight:'1px solid var(--border)', verticalAlign:'middle', padding:'12px 10px'}}>
+                        <div style={{background:'#e2e8f0', color:'#334155', padding:'4px 8px', borderRadius:'12px', fontSize:'0.7rem', fontWeight:600, display:'inline-block'}}>
+                          {p.theme || '—'}
+                        </div>
+                      </td>
+                    )}
                     <td style={{background:'#fff', borderRight:'1px solid var(--border)', padding:'12px 10px'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                         <div className="proj-name" onClick={() => { setEditing(p); setModal(true); }} title="Click to edit" style={{cursor:'pointer', color:'var(--primary)', fontWeight:700, fontSize:'0.85rem'}}>{p.project}</div>
@@ -229,8 +251,8 @@ export default function Flagship() {
                           )}
                           <div style={{display:'flex', flexDirection:'column', alignItems:'center', position:'relative', zIndex:5}}>
                             <div className={stClass} style={customStyle}></div>
-                            {il?.startDate && <span style={{fontSize:'0.65rem', color:'var(--primary)', marginTop:6, fontWeight:600}}>{fmtDate(il.startDate)}</span>}
-                            {il?.endDate && <span style={{fontSize:'0.65rem', color:'var(--green)', marginTop:2}}>{fmtDate(il.endDate)}</span>}
+                            {(il?.targetEnd || il?.startDate) && <span style={{fontSize:'0.65rem', color:'var(--primary)', marginTop:6, fontWeight:600}}>T: {fmtDate(il.targetEnd || il.startDate)}</span>}
+                            {(il?.actualEnd || il?.endDate) && <span style={{fontSize:'0.65rem', color:'var(--green)', marginTop:2}}>A: {fmtDate(il.actualEnd || il.endDate)}</span>}
                           </div>
                         </td>
                       )

@@ -8,8 +8,8 @@ import ColumnManager from '../components/ColumnManager'
 
 const IL_COLORS = ['#7c3aed','#0369a1','#15803d','#b45309','#b91c1c']
 const IL_BGS    = ['#ede9fe','#e0f2fe','#dcfce7','#fef9c3','#fee2e2']
-const ROW_H_PH  = 30
-const ROW_H_ST  = 24
+const ROW_H_PH  = 44
+const ROW_H_ST  = 38
 const ROW_H_PRJ = 34
 
 const MODES = {
@@ -128,9 +128,17 @@ export default function Gantt() {
       (p.il_phases||[]).forEach(il=>{
         if(il.startDate) mn=Math.min(mn,msOf(il.startDate))
         if(il.endDate)   mx=Math.max(mx,msOf(il.endDate))
+        if(il.targetStart) mn=Math.min(mn,msOf(il.targetStart))
+        if(il.targetEnd)   mx=Math.max(mx,msOf(il.targetEnd))
+        if(il.actualStart) mn=Math.min(mn,msOf(il.actualStart))
+        if(il.actualEnd)   mx=Math.max(mx,msOf(il.actualEnd))
         ;(il.subtasks||[]).forEach(st=>{
           if(st.startDate) mn=Math.min(mn,msOf(st.startDate))
           if(st.endDate)   mx=Math.max(mx,msOf(st.endDate))
+          if(st.targetStart) mn=Math.min(mn,msOf(st.targetStart))
+          if(st.targetEnd)   mx=Math.max(mx,msOf(st.targetEnd))
+          if(st.actualStart) mn=Math.min(mn,msOf(st.actualStart))
+          if(st.actualEnd)   mx=Math.max(mx,msOf(st.actualEnd))
         })
       })
     })
@@ -155,7 +163,7 @@ export default function Gantt() {
 
   function togglePhase(pKey,ilId){ setExpanded(e=>({...e,[pKey+'_'+ilId]:!e[pKey+'_'+ilId]})) }
 
-  function bar(startStr, endStr, ilIdx, h, done, isTarget = false, projName = ''){
+  function bar(startStr, endStr, ilIdx, h, done, isTarget = false, projName = '', topOffset = '50%'){
     const x1=dateToX(startStr, cols, cw)
     const x2=dateToX(endStr, cols, cw)
     const w =Math.max(x2-x1,cw*0.5)
@@ -172,11 +180,11 @@ export default function Gantt() {
     }
     
     const hoverText = projName 
-      ? `${projName}\nTarget: ${fmtDateShort(startStr)} to ${fmtDateShort(endStr)}`
-      : `${fmtDateShort(startStr)} to ${fmtDateShort(endStr)}`;
+      ? `${projName}\n${isTarget ? 'Target' : 'Actual'}: ${fmtDateShort(startStr)} to ${fmtDateShort(endStr)}`
+      : `${isTarget ? 'Target' : 'Actual'}: ${fmtDateShort(startStr)} to ${fmtDateShort(endStr)}`;
 
     return (
-      <div title={hoverText} style={{position:'absolute',left:x1,top:`calc(50% - ${h/2}px)`,width:w,height:h,background:bg,borderRadius:h/2,border:overdue?'2px solid #ef4444':`1px solid ${clr}`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:overdue?'0 0 6px rgba(239,68,68,0.5)':'none', cursor:'help'}}>
+      <div title={hoverText} style={{position:'absolute',left:x1,top:`calc(${topOffset} - ${h/2}px)`,width:w,height:h,background:bg,borderRadius:h/2,border:overdue?'2px solid #ef4444':`1px solid ${clr}`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:overdue?'0 0 6px rgba(239,68,68,0.5)':'none', cursor:'help'}}>
         {done && !isTarget && <span style={{color:'#fff',fontSize:h*0.7,lineHeight:1}}>✓</span>}
       </div>
     )
@@ -337,21 +345,33 @@ export default function Gantt() {
                     <div key={p._key} id={`gantt-proj-${p._key}`}>
                       {/* Project row */}
                       <div style={{position:'relative',height:ROW_H_PRJ,borderBottom:'1px solid var(--border)',background:'var(--surface-2)'}}>
-                        {targetStart && p.liveTarget && bar(targetStart, p.liveTarget, 0, 16, false, true, p.project)}
+                        {targetStart && p.liveTarget && bar(targetStart, p.liveTarget, 0, 16, false, true, p.project, '50%')}
                       </div>
                       {/* IL rows */}
-                      {(p.il_phases||[]).map((il,idx)=>(
+                      {(p.il_phases||[]).map((il,idx)=>{
+                        const tStart = il.targetStart || il.startDate;
+                        const tEnd   = il.targetEnd || il.startDate; // fallback to single milestone for target
+                        const aStart = il.actualStart || il.endDate;
+                        const aEnd   = il.actualEnd || il.endDate;
+                        return (
                         <React.Fragment key={il.id}>
                           <div onClick={()=>togglePhase(p._key,il.id)} style={{position:'relative',height:ROW_H_PH,borderBottom:'1px solid var(--border)',background:IL_BGS[idx]+'44',cursor:'pointer'}}>
-                            {il.startDate&&il.endDate&&bar(il.startDate,il.endDate,idx,16,(il.subtasks||[]).every(s=>s.done)&&(il.subtasks||[]).length>0, false, `${p.project} - ${il.label}`)}
+                            {tStart && tEnd && bar(tStart, tEnd, idx, 10, false, true, `${p.project} - ${il.label}`, '30%')}
+                            {aStart && aEnd && bar(aStart, aEnd, idx, 10, (il.subtasks||[]).every(s=>s.done)&&(il.subtasks||[]).length>0, false, `${p.project} - ${il.label}`, '70%')}
                           </div>
-                          {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si)=>(
+                          {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si)=>{
+                            const stTStart = st.targetStart || st.startDate;
+                            const stTEnd   = st.targetEnd || st.endDate;
+                            const stAStart = st.actualStart || (st.done ? st.startDate : null);
+                            const stAEnd   = st.actualEnd || (st.done ? st.endDate : null);
+                            return (
                             <div key={si} style={{position:'relative',height:ROW_H_ST,borderBottom:'1px solid var(--border)',background:IL_BGS[idx]+'22'}}>
-                              {st.startDate&&st.endDate&&bar(st.startDate,st.endDate,idx,14,st.done, false, `${p.project} - ${(st.label||st)}`)}
+                              {stTStart && stTEnd && bar(stTStart, stTEnd, idx, 8, false, true, `${p.project} - ${(st.label||st)}`, '30%')}
+                              {stAStart && stAEnd && bar(stAStart, stAEnd, idx, 8, st.done, false, `${p.project} - ${(st.label||st)}`, '70%')}
                             </div>
-                          ))}
+                          )})}
                         </React.Fragment>
-                      ))}
+                      )})}
                     </div>
                   )})}
                 </div>

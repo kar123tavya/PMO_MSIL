@@ -263,24 +263,42 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                     </select>
                   </td>
                   <td style={{padding:'8px'}}>
-                    <div style={{position:'relative'}}>
-                      <span style={{position:'absolute', left:8, top:8, fontSize:'0.7rem', color:'var(--text-muted)', pointerEvents:'none'}}>Target:</span>
+                    <div style={{position:'relative', marginBottom: 4}}>
+                      <span style={{position:'absolute', left:8, top:8, fontSize:'0.7rem', color:'var(--text-muted)', pointerEvents:'none'}}>Start:</span>
                       <input 
                         type="date" 
-                        value={ph.startDate} 
-                        onChange={e => updPhaseDt(pi, 'startDate', e.target.value)}
-                        style={{width:'100%', padding:'6px 6px 6px 48px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem'}}
+                        value={ph.targetStart || ''} 
+                        onChange={e => updPhaseDt(pi, 'targetStart', e.target.value)}
+                        style={{width:'100%', padding:'6px 6px 6px 42px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem'}}
+                      />
+                    </div>
+                    <div style={{position:'relative'}}>
+                      <span style={{position:'absolute', left:8, top:8, fontSize:'0.7rem', color:'var(--text-muted)', pointerEvents:'none'}}>End:</span>
+                      <input 
+                        type="date" 
+                        value={ph.targetEnd || ph.startDate || ''} 
+                        onChange={e => updPhaseDt(pi, 'targetEnd', e.target.value)}
+                        style={{width:'100%', padding:'6px 6px 6px 42px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem'}}
                       />
                     </div>
                   </td>
                   <td style={{padding:'8px'}}>
-                    <div style={{position:'relative'}}>
-                      <span style={{position:'absolute', left:8, top:8, fontSize:'0.7rem', color:'var(--text-muted)', pointerEvents:'none'}}>Actual:</span>
+                    <div style={{position:'relative', marginBottom: 4}}>
+                      <span style={{position:'absolute', left:8, top:8, fontSize:'0.7rem', color:'var(--text-muted)', pointerEvents:'none'}}>Start:</span>
                       <input 
                         type="date" 
-                        value={ph.endDate} 
-                        onChange={e => updPhaseDt(pi, 'endDate', e.target.value)}
-                        style={{width:'100%', padding:'6px 6px 6px 48px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem'}}
+                        value={ph.actualStart || ''} 
+                        onChange={e => updPhaseDt(pi, 'actualStart', e.target.value)}
+                        style={{width:'100%', padding:'6px 6px 6px 42px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem'}}
+                      />
+                    </div>
+                    <div style={{position:'relative'}}>
+                      <span style={{position:'absolute', left:8, top:8, fontSize:'0.7rem', color:'var(--text-muted)', pointerEvents:'none'}}>End:</span>
+                      <input 
+                        type="date" 
+                        value={ph.actualEnd || ph.endDate || ''} 
+                        onChange={e => updPhaseDt(pi, 'actualEnd', e.target.value)}
+                        style={{width:'100%', padding:'6px 6px 6px 42px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem'}}
                       />
                     </div>
                   </td>
@@ -314,10 +332,19 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                     <input className="il-sub-check" type="checkbox" checked={st.done} onChange={()=>togSub(pi,si)} style={{width:14, height:14, cursor:'pointer'}}/>
                     <input className="il-sub-label" value={st.label} onChange={e=>updSubDt(pi,si,'label',e.target.value)} style={{flex:1, fontSize:'0.75rem', background:'transparent', border:'none', borderBottom:'1px dashed var(--border)', padding:'2px', ...(st.done?{textDecoration:'line-through',color:'var(--text-light)'}:{})}} />
                     <button type="button" onClick={()=>delSub(pi,si)} style={{background:'none', border:'none', color:'var(--red)', cursor:'pointer', padding:'0 4px', fontSize:'0.8rem'}} title="Delete subtask">✕</button>
-                    <div className="il-sub-dates" style={{display:'flex', gap:6, alignItems:'center', marginLeft:8}}>
-                      <input type="date" value={st.startDate} onChange={e=>updSubDt(pi,si,'startDate',e.target.value)} style={{padding:'2px 4px', fontSize:'0.7rem', border:'1px solid var(--border)'}}/>
-                      <span style={{color:'var(--text-muted)'}}>→</span>
-                      <input type="date" value={st.endDate} onChange={e=>updSubDt(pi,si,'endDate',e.target.value)} style={{padding:'2px 4px', fontSize:'0.7rem', border:'1px solid var(--border)'}}/>
+                    <div className="il-sub-dates" style={{display:'flex', flexDirection:'column', gap:4, alignItems:'flex-end', marginLeft:8}}>
+                      <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                        <span style={{fontSize:'0.65rem', color:'var(--text-muted)', width: 35, textAlign:'right'}}>Target:</span>
+                        <input type="date" value={st.targetStart || st.startDate || ''} onChange={e=>updSubDt(pi,si,'targetStart',e.target.value)} style={{padding:'2px 4px', fontSize:'0.7rem', border:'1px solid var(--border)'}}/>
+                        <span style={{color:'var(--text-muted)'}}>→</span>
+                        <input type="date" value={st.targetEnd || st.endDate || ''} onChange={e=>updSubDt(pi,si,'targetEnd',e.target.value)} style={{padding:'2px 4px', fontSize:'0.7rem', border:'1px solid var(--border)'}}/>
+                      </div>
+                      <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                        <span style={{fontSize:'0.65rem', color:'var(--text-muted)', width: 35, textAlign:'right'}}>Actual:</span>
+                        <input type="date" value={st.actualStart || ''} onChange={e=>updSubDt(pi,si,'actualStart',e.target.value)} style={{padding:'2px 4px', fontSize:'0.7rem', border:'1px solid var(--border)'}}/>
+                        <span style={{color:'var(--text-muted)'}}>→</span>
+                        <input type="date" value={st.actualEnd || ''} onChange={e=>updSubDt(pi,si,'actualEnd',e.target.value)} style={{padding:'2px 4px', fontSize:'0.7rem', border:'1px solid var(--border)'}}/>
+                      </div>
                     </div>
                   </div>
                 ))}
