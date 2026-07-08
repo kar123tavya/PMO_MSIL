@@ -130,25 +130,31 @@ router.post('/', authMiddleware, (req, res) => {
   
   let pCode = p.parentCode;
   if (!pCode) {
-    const yy = String(now.getFullYear()).slice(-2);
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    let divCode = 'XX';
-    if (p.division && typeof p.division === 'string') {
-      const words = p.division.trim().split(/[\s&]+/);
-      if (words.length >= 2) {
-        divCode = (words[0][0] + words[1][0]).toUpperCase();
-      } else {
-        divCode = p.division.substring(0, 2).toUpperCase();
+    let fyCode = '0000';
+    if (p.fy) {
+      // Extract numbers from fy string e.g. "2026-27" or "26-27"
+      const nums = p.fy.match(/\d+/g);
+      if (nums && nums.length >= 2) {
+        let yr1 = nums[0].slice(-2);
+        let yr2 = nums[1].slice(-2);
+        fyCode = yr1 + yr2;
       }
+    } else {
+      // Derive from current date
+      const yr = now.getFullYear();
+      const mo = now.getMonth() + 1;
+      let yr1 = mo >= 4 ? yr : yr - 1;
+      let yr2 = yr1 + 1;
+      fyCode = String(yr1).slice(-2) + String(yr2).slice(-2);
     }
-    // Numbering is per year (yy) and division (divCode)
-    const likePattern = `${yy}%${divCode} - %`;
+
+    const likePattern = `${fyCode}QAQD-%`;
     const rows = db.prepare('SELECT parent_code FROM projects WHERE parent_code LIKE ?').all(likePattern);
     
     let maxNum = 0;
     rows.forEach(r => {
       if (r.parent_code) {
-        const parts = r.parent_code.split(' - ');
+        const parts = r.parent_code.split('-');
         if (parts.length === 2) {
           const num = parseInt(parts[1], 10);
           if (!isNaN(num) && num > maxNum) maxNum = num;
@@ -156,7 +162,8 @@ router.post('/', authMiddleware, (req, res) => {
       }
     });
     const nextNum = maxNum + 1;
-    pCode = `${yy}${mm}${divCode} - ${nextNum}`;
+    const nextNumStr = String(nextNum).padStart(3, '0');
+    pCode = `${fyCode}QAQD-${nextNumStr}`;
   }
   
   const nowIso = now.toISOString();
