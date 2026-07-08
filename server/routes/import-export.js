@@ -49,7 +49,13 @@ const MASTER_HEADERS = [
   'Third Party (Y/N)',   // thirdParty
   'Remarks',             // overallStatus
   'Assigned To Staff ID',
-  'Overall Progress'
+  'Overall Progress',
+  // ─── Legacy Hidden Columns ───────────────────────
+  'Project Type',
+  'Parent code',
+  'Child C',
+  'Linked Parent code',
+  'Project family code'
 ];
 
 // ── Flexible inbound column map ───────────────────────
@@ -234,6 +240,11 @@ function generateExcelBuffer(db) {
       p.il5_ts || '', p.il5_te || '', p.il5_as || '', p.il5_ae || '',
       p.assignedStaffId || '',
       p.overallStatus || '',
+      'Parent',         // Project Type
+      p.parentCode || '', // Parent code
+      '',               // Child C
+      '',               // Linked Parent code
+      p.parentCode || '', // Project family code
       ...customCols.map(c => p.customData?.[c.id] || '')
     ];
     
@@ -248,8 +259,13 @@ function generateExcelBuffer(db) {
   });
 
     const ws1 = XLSX.utils.aoa_to_sheet([DYNAMIC_HEADERS, ...dataRows]);
-    // Set column widths
-    ws1['!cols'] = DYNAMIC_HEADERS.map(h => ({ wch: Math.max(String(h).length + 2, 16) }));
+    // Set column widths and hide legacy columns
+    ws1['!cols'] = DYNAMIC_HEADERS.map(h => {
+      if (['Project Type', 'Parent code', 'Child C', 'Linked Parent code', 'Project family code'].includes(h)) {
+        return { hidden: true };
+      }
+      return { wch: Math.max(String(h).length + 2, 16) };
+    });
     // Freeze top row
     ws1['!freeze'] = { xSplit: 0, ySplit: 1 };
     XLSX.utils.book_append_sheet(wb, ws1, 'Master Data');
