@@ -42,17 +42,21 @@ export function AuthProvider({ children }) {
       pic:             ['view_all','update_phase','update_status','export','view_history'],
       viewer:          ['view_all','export'],
     }
-    return (PERMS[user.role] || []).includes(action)
+    const effectiveRole = user.role === 'senior_manager' ? 'admin' : user.role === 'deputy_manager' ? 'pic' : user.role;
+    return (PERMS[effectiveRole] || []).includes(action)
   }, [user])
 
-  const getRoleLabel = (role) => ({
-    admin: 'Admin',
-    department_head: 'Department Head',
-    division_head: 'Division Head',
-    section_head: 'Section Head',
-    pic: 'Person In Charge (PIC)',
-    viewer: 'Viewer',
-  }[role] || role)
+  const getRoleLabel = (role) => {
+    const effectiveRole = role === 'senior_manager' ? 'admin' : role === 'deputy_manager' ? 'pic' : role;
+    return {
+      admin: 'Admin',
+      department_head: 'Department Head',
+      division_head: 'Division Head',
+      section_head: 'Section Head',
+      pic: 'Person In Charge (PIC)',
+      viewer: 'Viewer',
+    }[effectiveRole] || effectiveRole
+  }
 
   return (
     <AuthContext.Provider value={{ user, login, logout, can, getRoleLabel }}>

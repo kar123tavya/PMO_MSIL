@@ -19,6 +19,8 @@ function authMiddleware(req, res, next) {
 
   try {
     req.user = jwt.verify(token, JWT_SECRET);
+    if (req.user.role === 'senior_manager') req.user.role = 'admin';
+    if (req.user.role === 'deputy_manager') req.user.role = 'pic';
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token. Please log in again.' });

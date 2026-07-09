@@ -82,10 +82,7 @@ export default function Login() {
                 <input className="login-input" type="email"    placeholder="Maruti Suzuki Email" value={rEmail} onChange={e=>setREmail(e.target.value)} required />
                 <input className="login-input" type="text"     placeholder="Full Name"           value={rName}  onChange={e=>setRName(e.target.value)}  required />
                 <input className="login-input" type="text"     placeholder="Staff Number"        value={rStaff} onChange={e=>setRStaff(e.target.value)} />
-                <input className="login-input" type="text"     placeholder="Designation"         value={rDesig} onChange={e=>setRDesig(e.target.value)} />
-                <input className="login-input" type="text"     placeholder="Department (e.g. IT)" value={rDept} onChange={e=>setRDept(e.target.value)} />
-                <input className="login-input" type="text"     placeholder="Division (e.g. Digital)" value={rDiv} onChange={e=>setRDiv(e.target.value)} />
-                <input className="login-input" type="text"     placeholder="Section (e.g. Core App)" value={rSec} onChange={e=>setRSec(e.target.value)} />
+                <input className="login-input" type="text"     placeholder="Division (e.g. Digital)" value={rDiv} onChange={e=>setRDiv(e.target.value)} required />
                 <select className="login-input" value={rRole} onChange={e=>setRRole(e.target.value)}>
                   <option value="viewer">Viewer</option>
                   <option value="pic">Person In Charge (PIC)</option>

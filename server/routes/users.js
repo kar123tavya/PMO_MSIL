@@ -87,7 +87,7 @@ router.post('/', authMiddleware, (req, res) => {
 
 /* PUT /api/users/:id/approve */
 router.put('/:id/approve', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager') return res.status(403).json({ error: 'Forbidden.' });
+  if (req.user.role !== 'admin' && req.user.role !== 'department_head') return res.status(403).json({ error: 'Forbidden.' });
   db.prepare("UPDATE users SET status='active', updated_at=? WHERE id=?").run(new Date().toISOString(), req.params.id);
   _broadcast('users_changed', null);
   res.json({ ok: true });
@@ -95,7 +95,7 @@ router.put('/:id/approve', authMiddleware, (req, res) => {
 
 /* DELETE /api/users/:id */
 router.delete('/:id', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager') return res.status(403).json({ error: 'Forbidden.' });
+  if (req.user.role !== 'admin' && req.user.role !== 'department_head') return res.status(403).json({ error: 'Forbidden.' });
   if (req.params.id === req.user.uid) return res.status(400).json({ error: 'Cannot delete your own account.' });
   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   _broadcast('users_changed', null);

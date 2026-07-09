@@ -105,7 +105,7 @@ export default function Flagship() {
 
       const res = await saveProject(data)
       if (res && res.status === 202) {
-        showToast('Edits submitted for admin approval!', 'info')
+        showToast('Edits submitted for Head approval!', 'info')
       } else {
         showToast(isEdit ? 'Project updated!' : 'Project added!', 'success')
       }

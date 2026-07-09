@@ -139,9 +139,11 @@ export default function Users() {
                               onChange={(e) => handleRoleChange(u.uid, e.target.value)}
                             >
                               <option value="viewer">Viewer</option>
-                              <option value="deputy_manager">Deputy Manager (PIC)</option>
+                              <option value="pic">Person In Charge (PIC)</option>
                               <option value="section_head">Section Head</option>
-                              <option value="senior_manager">Senior Manager</option>
+                              <option value="division_head">Division Head</option>
+                              <option value="department_head">Department Head</option>
+                              <option value="admin">Admin</option>
                             </select>
                           )}
                         </td>
