@@ -74,7 +74,7 @@ export default function AIChatWidget() {
           height: '56px',
           padding: '0 24px',
           borderRadius: '28px',
-          backgroundColor: 'var(--primary)',
+          backgroundColor: '#ea580c', /* Orange-Red to stand out */
           color: 'white',
           border: 'none',
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
