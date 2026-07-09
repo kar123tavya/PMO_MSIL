@@ -26,7 +26,7 @@ export default function TasksList() {
   const isSM = user?.role === 'admin' || user?.role === 'department_head' || user?.role === 'division_head' || user?.role === 'section_head';
   
   const deadlineAlerts = (projects || []).filter(p => {
-    if (!isSM && p.assignedStaffId !== user?.staff_no) return false;
+    if (!isSM && p.division !== user?.division) return false;
     if (!p.liveTarget) return false;
     if (p.status === 'Live' || p.status === 'Cancelled') return false;
     const d = new Date(p.liveTarget);

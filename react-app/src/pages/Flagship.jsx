@@ -103,6 +103,17 @@ export default function Flagship() {
         ? TRACKED_FIELDS.filter(f => String(orig[f]??'') !== String(data[f]??'')).map(f => ({ field: f, from: String(orig[f]??''), to: String(data[f]??'') }))
         : []
 
+      if (user?.role === 'pic' && data.division && user?.division && data.division !== user.division) {
+        const reason = window.prompt(`You are editing a project in ${data.division} Division, but you belong to ${user.division} Division.\n\nPlease provide a short reason for this cross-division change:`);
+        if (!reason) {
+          showToast('Cross-division edit cancelled. A reason is required.', 'error');
+          setSaving(false);
+          return;
+        }
+        data._crossDivisionReason = reason;
+      }
+
+
       const res = await saveProject(data)
       if (res && res.status === 202) {
         showToast('Edits submitted for Head approval!', 'info')

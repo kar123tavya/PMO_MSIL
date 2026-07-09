@@ -202,8 +202,9 @@ router.put('/:id', authMiddleware, (req, res) => {
 
   const u = req.user;
   if (u.role === 'viewer') return res.status(403).json({ error: 'Read-only access.' });
-  if (u.role === 'deputy_manager' && existing.assigned_to !== u.email)
-    return res.status(403).json({ error: 'You can only edit projects assigned to you.' });
+  if (u.role === 'pic' && existing.assigned_to !== u.email && existing.division === u.division) {
+    // allowed if it's in their division, or if they give a cross division reason.
+  }
 
   const p   = req.body;
   const now = new Date().toISOString();
@@ -218,11 +219,20 @@ router.put('/:id', authMiddleware, (req, res) => {
     const adminRows = db.prepare("SELECT email FROM users WHERE role = 'admin'").all();
     const adminEmails = adminRows.map(r => r.email);
     
-    const allApprovers = [...new Set([...headEmails, ...adminEmails])];
+    // Find PICs of the target division
+    const divPicRows = db.prepare("SELECT email FROM users WHERE role = 'pic' AND division = ?").all(existing.division);
+    const divPicEmails = divPicRows.map(r => r.email);
+
+    const allApprovers = [...new Set([...headEmails, ...adminEmails, ...divPicEmails])];
+    
+    let notifBody = `${u.name} proposed edits to project: ${existing.project}`;
+    if (p._crossDivisionReason && existing.division !== u.division) {
+      notifBody += `\n\n**Cross-Division Edit Reason:** ${p._crossDivisionReason}`;
+    }
 
     db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, from_user, from_name, project_id, project_name, status, changes_json, created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', `${u.name} proposed edits to project: ${existing.project}`, JSON.stringify(allApprovers), u.uid, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), now);
+    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', notifBody, JSON.stringify(allApprovers), u.uid, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), now);
     
     // Broadcast notification change
     const notifs = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
@@ -232,7 +242,8 @@ router.put('/:id', authMiddleware, (req, res) => {
     sendApprovalEmail([...allApprovers, u.email], {
       projectName: existing.project,
       requestedBy: u.name,
-      division: existing.division || 'N/A'
+      division: existing.division || 'N/A',
+      reason: p._crossDivisionReason || ''
     });
 
     return res.status(202).json({ accepted: true, message: 'Edits submitted for Head approval.' });

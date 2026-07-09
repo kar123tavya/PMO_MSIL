@@ -18,12 +18,12 @@ function setBroadcast(fn) { _broadcast = fn; }
 
 // ── Helper ──────────────────────────────────────────
 function userSees(n, user) {
-  const toUsers = JSON.parse(n.to_users || '[]');
-  const ccUsers = JSON.parse(n.cc_users || '[]');
-  if (user.role === 'admin' || user.role === 'department_head') return true; // Admins and Dept Heads see all approvals
-  if (n.from_user === user.email)    return true;         // sender sees their own
-  if (toUsers.includes(user.email))  return true;
-  if (ccUsers.includes(user.email))  return true;
+  const toUsers = JSON.parse(n.to_users || '[]').map(e => (e || '').toLowerCase());
+  const ccUsers = JSON.parse(n.cc_users || '[]').map(e => (e || '').toLowerCase());
+  if (user.role === 'admin' || user.role === 'department_head') return true;
+  if ((n.from_user || '').toLowerCase() === (user.email || '').toLowerCase()) return true;
+  if (toUsers.includes((user.email || '').toLowerCase()))  return true;
+  if (ccUsers.includes((user.email || '').toLowerCase()))  return true;
   return false;
 }
 
