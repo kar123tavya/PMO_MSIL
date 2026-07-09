@@ -11,6 +11,20 @@ export default function AIChatWidget() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const widgetRef = useRef(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (widgetRef.current && !widgetRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -43,7 +57,7 @@ export default function AIChatWidget() {
   };
 
   return (
-    <>
+    <div ref={widgetRef}>
       {/* Floating Chat Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
@@ -232,6 +246,6 @@ export default function AIChatWidget() {
           }
         `}} />
       </div>
-    </>
+    </div>
   );
 }
