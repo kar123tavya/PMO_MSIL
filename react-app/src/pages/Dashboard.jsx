@@ -189,10 +189,10 @@ export default function Dashboard() {
         <Header title="Project Dashboard" searchValue={search} onSearch={setSearch}>
           <RoleBadge />
           <div className="db-status"><span className="db-dot connected"/><span>Live</span></div>
-          {can('import') && <button className="btn btn-ghost" onClick={() => setImportOpen(true)}>⬆ Import</button>}
-          <button className="btn btn-ghost" onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
-          {can('export') && <button className="btn btn-ghost" onClick={handleExport}>⬇ Export</button>}
-          {can('add_project') && <button className="btn btn-primary" onClick={() => { setEditing(null); setModal(true) }}>+ Add Project</button>}
+          {can('import') && <button id="tour-import" className="btn btn-ghost" onClick={() => setImportOpen(true)}>⬆ Import</button>}
+          <button id="tour-columns" className="btn btn-ghost" onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
+          {can('export') && <button id="tour-export" className="btn btn-ghost" onClick={handleExport}>⬇ Export</button>}
+          {can('add_project') && <button id="tour-add-project" className="btn btn-primary" onClick={() => { setEditing(null); setModal(true) }}>+ Add Project</button>}
         </Header>
         <div className="page-content">
           <div className="kpi-row">
@@ -203,7 +203,7 @@ export default function Dashboard() {
             <KPICard label="Cost Saved"        value={kpis.cost}     accent="#0891b2" icon="₹"/>
           </div>
 
-          <div className="filters-bar">
+          <div id="tour-filters" className="filters-bar">
             <select className="filter-select" value={divF} onChange={e=>setDivF(e.target.value)}>
               <option value="">All Divisions</option>{divs.map(d=><option key={d}>{d}</option>)}
             </select>
@@ -240,7 +240,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="table-wrap">
+          <div id="tour-table" className="table-wrap">
             <table>
               <thead><tr>
                 <th>Code</th><th>Project Name</th><th>Status</th><th>Live Target</th>

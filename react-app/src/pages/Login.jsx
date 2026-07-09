@@ -52,18 +52,15 @@ export default function Login() {
     <div className="login-page">
       <div className="login-left">
         <div className="login-form-wrap">
-          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:32 }}>
-            <div className="login-logo">
+          <div style={{ display:'flex', flexDirection: 'column', alignItems:'center', gap:12, marginBottom:32 }}>
+            <div className="login-logo" style={{ marginBottom: 0 }}>
               <img 
                 src="/maruti-logo.svg" 
                 alt="Maruti Suzuki" 
                 style={{ height: '40px', width: 'auto', display: 'block' }} 
               />
             </div>
-            <div>
-              <div style={{ fontWeight:800, fontSize:'1rem' }}>Maruti Suzuki</div>
-              <div style={{ fontSize:'.72rem', color:'var(--text-muted)' }}>Project Monitoring Tool</div>
-            </div>
+            <div style={{ fontSize:'.85rem', color:'var(--text-muted)', fontWeight: 500 }}>Project Monitoring Tool</div>
           </div>
 
           {mode === 'login' ? (
