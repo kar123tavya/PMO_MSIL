@@ -16,7 +16,9 @@ function rowToUser(row) {
     name:        row.name,
     email:       row.email,
     role:        row.role,
+    department:  row.department,
     division:    row.division,
+    section:     row.section,
     staffNo:     row.staff_no,
     designation: row.designation,
     status:      row.status,
@@ -46,10 +48,10 @@ router.get('/by-email/:email', authMiddleware, (req, res) => {
 
 /* POST /api/users  — create or update */
 router.post('/', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager')
-    return res.status(403).json({ error: 'Only Senior Managers can manage users.' });
+  if (req.user.role !== 'admin' && req.user.role !== 'department_head')
+    return res.status(403).json({ error: 'Only Admins and Department Heads can manage users.' });
 
-  const { uid, name, email, password, role, division, staffNo, designation, status } = req.body;
+  const { uid, name, email, password, role, department, division, section, staffNo, designation, status } = req.body;
   const now = new Date().toISOString();
 
   if (uid && uid !== '__new__') {
@@ -60,9 +62,9 @@ router.post('/', authMiddleware, (req, res) => {
     let hash = existing.password_hash;
     if (password && password.trim()) hash = bcrypt.hashSync(password, 10);
 
-    db.prepare(`UPDATE users SET name=?, role=?, division=?, staff_no=?, designation=?, status=?, password_hash=?, updated_at=?
+    db.prepare(`UPDATE users SET name=?, role=?, department=?, division=?, section=?, staff_no=?, designation=?, status=?, password_hash=?, updated_at=?
       WHERE id=?`
-    ).run(name, role, division||null, staffNo||null, designation||null, status||'active', hash, now, uid);
+    ).run(name, role, department||null, division||null, section||null, staffNo||null, designation||null, status||'active', hash, now, uid);
 
     _broadcast('users_changed', null);
     return res.json({ uid });
@@ -74,9 +76,9 @@ router.post('/', authMiddleware, (req, res) => {
 
     const hash = bcrypt.hashSync(password, 10);
     const id   = uuidv4();
-    db.prepare(`INSERT INTO users (id,name,email,password_hash,role,division,staff_no,designation,status,created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?)`
-    ).run(id, name, email.toLowerCase(), hash, role||'deputy_manager', division||null, staffNo||null, designation||null, status||'active', now);
+    db.prepare(`INSERT INTO users (id,name,email,password_hash,role,department,division,section,staff_no,designation,status,created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(id, name, email.toLowerCase(), hash, role||'deputy_manager', department||null, division||null, section||null, staffNo||null, designation||null, status||'active', now);
 
     _broadcast('users_changed', null);
     return res.status(201).json({ uid: id });

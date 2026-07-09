@@ -88,7 +88,9 @@ function dateToX(dateStr, cols, cellW) {
 export default function Gantt() {
   const { projects, loading } = useProjects()
   const { showToast } = useToast()
+  const { user } = useAuth()
   const [search,   setSearch]   = useState('')
+  const [filterDiv, setFilterDiv] = useState(user?.role === 'pic' ? (user?.division || '') : '')
   const [expanded, setExpanded] = useState({})
   const [viewMode, setViewMode] = useState('daily')
   const [showExportModal, setShowExportModal] = useState(false)
@@ -117,9 +119,10 @@ export default function Gantt() {
     projects.filter(p=>
       (p.il_phases||[]).some(il=>il.targetStart||il.targetEnd||il.actualStart||il.actualEnd||(il.subtasks||[]).some(st=>st.startDate||st.endDate)) &&
       (!search||(p.project||'').toLowerCase().includes(search.toLowerCase())) &&
+      (!filterDiv||p.division === filterDiv) &&
       (!isolatedProjKey || p._key === isolatedProjKey)
     ),
-    [projects, search, isolatedProjKey]
+    [projects, search, filterDiv, isolatedProjKey]
   )
 
   const { cols, totalW, todayX } = useMemo(()=>{
@@ -257,7 +260,13 @@ export default function Gantt() {
         
         <div style={{display:'flex', alignItems:'center', padding:'8px 14px', background:'var(--surface)', borderBottom:'1px solid var(--border)'}}>
           <div style={{fontWeight:600, fontSize:'0.85rem', marginRight:20}}>Timeline Filter:</div>
-          <select className="input-field" style={{padding:'4px 8px', height:32, fontSize:'0.8rem', marginRight:10, width:120}} value={viewMode} onChange={e=>setViewMode(e.target.value)}>
+          <select value={filterDiv} onChange={e=>setFilterDiv(e.target.value)} style={{padding:'6px 12px', borderRadius:6, border:'1px solid var(--border)', fontSize:'0.8rem'}}>
+            <option value="">All Divisions</option>
+            {[...new Set(projects.map(p=>p.division).filter(Boolean))].sort().map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <select value={viewMode} onChange={e=>setViewMode(e.target.value)} style={{padding:'6px 12px', borderRadius:6, border:'1px solid var(--border)', fontSize:'0.8rem', marginRight:10, width:120}}>
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>

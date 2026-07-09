@@ -32,7 +32,7 @@ export default function Flagship() {
 
   const [search, setSearch] = useState('')
   const [filterTheme, setFilterTheme] = useState('')
-  const [filterDiv, setFilterDiv] = useState('')
+  const [filterDiv, setFilterDiv] = useState(user?.role === 'pic' ? (user?.division || '') : '')
   
   const [modal,   setModal]   = useState(false)
   const [editing, setEditing] = useState(null)
@@ -122,9 +122,6 @@ export default function Flagship() {
 
       if (newlyCompleted.length > 0) {
         setApprovalData({ project: data, changes: [], isCompletion: true, completedPhases: newlyCompleted })
-        setApprovalOpen(true)
-      } else if (isEdit && can && !can('manage_users') && changes.length > 0) {
-        setApprovalData({ project: data, changes, isCompletion: false })
         setApprovalOpen(true)
       }
     } catch (e) {

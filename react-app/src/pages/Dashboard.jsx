@@ -52,7 +52,7 @@ export default function Dashboard() {
   const { showToast }= useToast()
 
   const [search,  setSearch]  = useState('')
-  const [divF,    setDivF]    = useState('')
+  const [divF,    setDivF]    = useState(user?.role === 'pic' ? (user?.division || '') : '')
   const [catF,    setCatF]    = useState('')
   const [fyF,     setFyF]     = useState('')
   const [stF,     setStF]     = useState('')
@@ -157,10 +157,8 @@ export default function Dashboard() {
       }
       setModal(false)
 
-      if (isEdit && can && !can('manage_users') && changes.length > 0) {
-        setApprovalData({ project: data, changes })
-        setApprovalOpen(true)
-      }
+      // Edits are handled automatically by backend now, so we don't pop ApprovalModal
+      // unless we want to for something else.
     } catch(e) {
       showToast(e.response?.data?.error || e.message || 'Save failed', 'error')
     } finally {

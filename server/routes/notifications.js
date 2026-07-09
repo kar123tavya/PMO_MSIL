@@ -20,7 +20,7 @@ function setBroadcast(fn) { _broadcast = fn; }
 function userSees(n, user) {
   const toUsers = JSON.parse(n.to_users || '[]');
   const ccUsers = JSON.parse(n.cc_users || '[]');
-  if (user.role === 'senior_manager') return true;        // SM sees all
+  if (user.role === 'admin' || user.role === 'department_head') return true; // Admins and Dept Heads see all approvals
   if (n.from_user === user.email)    return true;         // sender sees their own
   if (toUsers.includes(user.email))  return true;
   if (ccUsers.includes(user.email))  return true;
@@ -122,9 +122,13 @@ router.patch('/:id', authMiddleware, (req, res) => {
       if (action === 'unread' && idx > -1) readBy.splice(idx, 1);
       db.prepare('UPDATE notifications SET read_by=?, updated_at=? WHERE id=?').run(JSON.stringify(readBy), now, n.id);
     } else if (action === 'approve' || action === 'reject') {
-      if (req.user.role !== 'senior_manager')
-        return res.status(403).json({ error: 'Only Senior Managers can approve/reject.' });
-      db.prepare('UPDATE notifications SET status=?, updated_at=? WHERE id=?').run(action === 'approve' ? 'approved' : 'rejected', now, n.id);
+      if (!['admin', 'department_head', 'division_head', 'section_head'].includes(req.user.role))
+        return res.status(403).json({ error: 'Insufficient permissions to approve/reject.' });
+      
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const newBody = `${n.body}\n\n**${action === 'approve' ? 'Approved' : 'Rejected'} by ${req.user.name} (${req.user.role})**`;
+      
+      db.prepare('UPDATE notifications SET status=?, body=?, updated_at=? WHERE id=?').run(newStatus, newBody, now, n.id);
 
       // Also log audit
       const { changes_json } = req.body;
@@ -141,8 +145,8 @@ router.patch('/:id', authMiddleware, (req, res) => {
 // ── DELETE /api/notifications/:id ────────────────────
 router.delete('/:id', authMiddleware, (req, res) => {
   try {
-    if (req.user.role !== 'senior_manager')
-      return res.status(403).json({ error: 'Only Senior Managers can delete notifications.' });
+    if (!['admin', 'department_head', 'division_head'].includes(req.user.role))
+      return res.status(403).json({ error: 'Insufficient permissions to delete notifications.' });
     db.prepare('DELETE FROM notifications WHERE id=?').run(req.params.id);
     res.json({ deleted: true });
   } catch (err) {

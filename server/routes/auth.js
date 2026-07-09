@@ -40,24 +40,28 @@ router.post('/login', (req, res) => {
 });
 
 /* POST /api/auth/register */
-router.post('/register', (req, res) => {
-  const { email, name, staffNo, designation, role, password } = req.body;
-  if (!email || !name || !password)
-    return res.status(400).json({ error: 'Email, name, and password are required.' });
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, name, role, division, department, section, staffNo, designation } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, password, and name are required' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    const id = uuidv4();
+    
+    // Default role is pic if not provided or invalid
+    const validRoles = ['admin', 'department_head', 'division_head', 'section_head', 'pic'];
+    const assignedRole = validRoles.includes(role) ? role : 'pic';
 
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.trim().toLowerCase());
-  if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
+    db.prepare(`
+      INSERT INTO users (id, name, email, password_hash, role, department, division, section, staff_no, designation, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+    `).run(id, name, email.trim().toLowerCase(), hash, assignedRole, department||null, division||null, section||null, staffNo||null, designation||null);
 
-  const hash = bcrypt.hashSync(password, 10);
-  const id   = uuidv4();
-  const now  = new Date().toISOString();
-
-  db.prepare(`
-    INSERT INTO users (id, name, email, password_hash, role, staff_no, designation, status, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?)
-  `).run(id, name.trim(), email.trim().toLowerCase(), hash, role || 'deputy_manager', staffNo||'', designation||'', 'pending', now);
-
-  res.status(201).json({ message: 'Account created. Awaiting admin approval.' });
+    res.status(201).json({ message: 'Account created. Awaiting admin approval.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Registration failed.' });
+  }
 });
 
 module.exports = router;

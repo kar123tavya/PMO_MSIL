@@ -1,67 +1,62 @@
-// ═══════════════════════════════════════════════════════
-//  services/emailService.js — Nodemailer Service
-// ═══════════════════════════════════════════════════════
 const nodemailer = require('nodemailer');
+require('dotenv').config();
 
-// TODO: Replace with Maruti Suzuki SMTP configuration
-const transporter = nodemailer.createTransport({
-  host: 'smtp.ethereal.email',
-  port: 587,
-  auth: {
-    user: 'ethereal.user@ethereal.email',
-    pass: 'etherealpassword'
-  }
-});
+// Create transporter only if SMTP settings are provided
+let transporter = null;
+if (process.env.SMTP_HOST) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
 
-async function sendDeadlineAlert(user, project, daysLeft, ccSeniors = []) {
-  if (!user || !user.email) return;
+/**
+ * Send an approval notification email to a list of recipients.
+ * @param {Array<string>} emails - Array of recipient email addresses
+ * @param {Object} changeData - Data regarding the project edit
+ */
+async function sendApprovalEmail(emails, changeData) {
+  if (!emails || emails.length === 0) return;
 
-  const subject = daysLeft === 0 
-    ? `🚨 OVERDUE: PMO Project Deadline - ${project.project}` 
-    : `⏰ REMINDER: Project Deadline in ${daysLeft} Days - ${project.project}`;
-
-  const ccEmails = ccSeniors.map(s => s.email).filter(Boolean);
-
+  const subject = `[PMO Dashboard] Approval Required: Project Update - ${changeData.projectName}`;
   const html = `
-    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
-      <div style="background-color: ${daysLeft === 0 ? '#dc2626' : '#2563eb'}; color: white; padding: 20px; text-align: center;">
-        <h2 style="margin: 0;">PMO Dashboard Alert</h2>
-      </div>
-      <div style="padding: 20px;">
-        <p>Dear ${user.name},</p>
-        <p>This is an automated reminder regarding the following project assigned to you:</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Project Code</td><td style="padding: 8px; border: 1px solid #ddd;">${project.parentCode || '—'}</td></tr>
-          <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Project Name</td><td style="padding: 8px; border: 1px solid #ddd;">${project.project}</td></tr>
-          <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Division</td><td style="padding: 8px; border: 1px solid #ddd;">${project.division || '—'}</td></tr>
-          <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Status</td><td style="padding: 8px; border: 1px solid #ddd; color: ${daysLeft === 0 ? '#dc2626' : '#eab308'}; font-weight: bold;">${daysLeft === 0 ? 'OVERDUE' : `${daysLeft} Days Remaining`}</td></tr>
-        </table>
-
-        <p>Please log in to the PMO Dashboard to update the status and milestones.</p>
-        
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; text-align: center;">
-          <p>This is an automatically generated email. Please do not reply.</p>
-          <p>&copy; Maruti Suzuki PMO</p>
-        </div>
-      </div>
-    </div>
+    <h2>Project Update Pending Approval</h2>
+    <p><strong>Project:</strong> ${changeData.projectName}</p>
+    <p><strong>Changed By:</strong> ${changeData.requestedBy}</p>
+    <p><strong>Division:</strong> ${changeData.division}</p>
+    <p>A Person In Charge (PIC) has submitted changes to the above project. 
+       This requires approval from the Section Head, Division Head, or Department Head.</p>
+    <p>Please log in to the PMO Dashboard to review and approve/reject these changes.</p>
+    <br/>
+    <p><i>Note: If any of the Heads approves this request, it will be automatically committed to the database.</i></p>
   `;
 
-  try {
-    const info = await transporter.sendMail({
-      from: '"PMO Dashboard" <pmo-noreply@maruti.co.in>',
-      to: user.email,
-      cc: ccEmails,
-      subject: subject,
-      html: html,
-    });
-    console.log(`[Email Service] Sent alert for project ${project.project} to ${user.email} (Preview: ${nodemailer.getTestMessageUrl(info) || 'N/A'})`);
-  } catch (error) {
-    console.error('[Email Service] Failed to send email:', error);
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"PMO System" <noreply@maruti.co.in>',
+        to: emails.join(','),
+        subject,
+        html,
+      });
+      console.log(`[Email] Approval email sent to: ${emails.join(', ')}`);
+    } catch (err) {
+      console.error('[Email] Failed to send email:', err);
+    }
+  } else {
+    console.log(`\n--- MOCK EMAIL ---`);
+    console.log(`To: ${emails.join(', ')}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Body: ${html.replace(/<[^>]+>/g, '')}`);
+    console.log(`------------------\n`);
   }
 }
 
 module.exports = {
-  sendDeadlineAlert
+  sendApprovalEmail,
 };

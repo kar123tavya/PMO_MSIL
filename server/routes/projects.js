@@ -5,6 +5,7 @@ const express = require('express');
 const router  = express.Router();
 const { db, uuidv4 } = require('../db/schema');
 const { authMiddleware } = require('../middleware/auth');
+const { sendApprovalEmail } = require('../services/emailService');
 const { triggerExcelRewrite } = require('../services/excelSyncService');
 
 function computeDiffs(p, existing) {
@@ -106,9 +107,8 @@ function getAllRows() {
 /* GET /api/projects */
 router.get('/', authMiddleware, (req, res) => {
   let projects = getAllRows();
-  if (req.user.role === 'section_head' && req.user.division) {
-    projects = projects.filter(p => p.division === req.user.division);
-  }
+  // We no longer restrict the GET feed!
+  // PICs and Heads default to their divisions on the frontend, but can view everything.
   res.json(projects);
 });
 
@@ -121,7 +121,7 @@ router.get('/:id', authMiddleware, (req, res) => {
 
 /* POST /api/projects */
 router.post('/', authMiddleware, (req, res) => {
-  if (!['senior_manager','section_head'].includes(req.user.role))
+  if (req.user.role === 'viewer')
     return res.status(403).json({ error: 'Insufficient permissions to create projects.' });
 
   const p   = req.body;
@@ -208,19 +208,34 @@ router.put('/:id', authMiddleware, (req, res) => {
   const p   = req.body;
   const now = new Date().toISOString();
 
-  if (u.role !== 'senior_manager') {
-    // Role-based approval: send to admin instead of directly saving
-    const adminRows = db.prepare("SELECT email FROM users WHERE role = 'senior_manager'").all();
+  // If a PIC edits, it requires multi-tier approval
+  if (u.role === 'pic') {
+    // Find heads of this division/department
+    const headRows = db.prepare("SELECT email FROM users WHERE role IN ('department_head', 'division_head', 'section_head')").all();
+    const headEmails = headRows.map(r => r.email);
+    
+    // Also include admin just in case
+    const adminRows = db.prepare("SELECT email FROM users WHERE role = 'admin'").all();
     const adminEmails = adminRows.map(r => r.email);
+    
+    const allApprovers = [...new Set([...headEmails, ...adminEmails])];
 
     db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, from_user, from_name, project_id, project_name, status, changes_json, created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', `${u.name} proposed edits to project: ${existing.project}`, JSON.stringify(adminEmails), u.uid, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), now);
+    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', `${u.name} proposed edits to project: ${existing.project}`, JSON.stringify(allApprovers), u.uid, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), now);
     
     // Broadcast notification change
     const notifs = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
     _broadcast('notifications_changed', notifs);
-    return res.status(202).json({ accepted: true, message: 'Edits submitted for admin approval.' });
+    
+    // Send Email
+    sendApprovalEmail([...allApprovers, u.email], {
+      projectName: existing.project,
+      requestedBy: u.name,
+      division: existing.division || 'N/A'
+    });
+
+    return res.status(202).json({ accepted: true, message: 'Edits submitted for Head approval.' });
   }
 
   db.prepare(`UPDATE projects SET

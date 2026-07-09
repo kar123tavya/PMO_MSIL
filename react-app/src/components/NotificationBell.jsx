@@ -148,8 +148,8 @@ export default function NotificationBell() {
                       </div>
                     </div>
                   </div>
-                  {/* Approve/Reject buttons for SM */}
-                  {user?.role === 'senior_manager' && n.type === 'approval_request' && n.status === 'pending' && (
+                  {/* Approve/Reject buttons for User Registrations */}
+                  {['admin', 'department_head'].includes(user?.role) && n.type === 'approval_request' && n.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                       <button
                         onClick={(e) => { e.stopPropagation(); approveOrReject(n.id, 'approve') }}
@@ -162,7 +162,7 @@ export default function NotificationBell() {
                     </div>
                   )}
                   {/* Approve/Reject buttons for Project Edits */}
-                  {user?.role === 'senior_manager' && n.type === 'edit_approval' && n.status === 'pending' && (
+                  {['admin', 'department_head', 'division_head', 'section_head'].includes(user?.role) && n.type === 'edit_approval' && n.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                       <button
                         onClick={(e) => { e.stopPropagation(); approveEditRequest(n.id, n.project_id, 'approve') }}
