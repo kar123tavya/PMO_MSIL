@@ -130,6 +130,23 @@ router.patch('/:id', authMiddleware, (req, res) => {
       
       db.prepare('UPDATE notifications SET status=?, body=?, updated_at=? WHERE id=?').run(newStatus, newBody, now, n.id);
 
+      // Send a notification back to the original requester (PIC)
+      const actionPastTense = action === 'approve' ? 'Approved' : 'Rejected';
+      const returnId = uuidv4();
+      db.prepare(`INSERT INTO notifications
+        (id, type, title, body, to_users, cc_users, from_user, from_name,
+         project_id, project_name, status, priority, read_by, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ).run(
+        returnId, 'general', `Your edit was ${actionPastTense}`,
+        `Your proposed edit for **${n.project_name || 'Project'}** was ${actionPastTense.toLowerCase()} by ${req.user.name}.`,
+        JSON.stringify([n.from_user]), '[]',
+        'system', 'System',
+        n.project_id, n.project_name,
+        'approved', 'normal', '[]', now
+      );
+      _broadcast('notification_new', { id: returnId, type: 'general', title: `Your edit was ${actionPastTense}`, priority: 'normal', from_name: 'System' });
+
       // Also log audit
       const { changes_json } = req.body;
       _broadcast('notification_updated', { id: n.id, status: action === 'approve' ? 'approved' : 'rejected' });

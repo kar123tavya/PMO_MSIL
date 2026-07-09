@@ -6,7 +6,6 @@ import KPICard        from '../components/KPICard'
 import ProjectForm    from '../components/ProjectForm'
 import ImportModal    from '../components/ImportModal'
 import RoleBadge      from '../components/RoleBadge'
-import DeadlineAlerts from '../components/DeadlineAlerts'
 import ApprovalModal  from '../components/ApprovalModal'
 import ColumnManager  from '../components/ColumnManager'
 import { useProjects }       from '../context/ProjectContext'
@@ -186,7 +185,6 @@ export default function Dashboard() {
           {can('add_project') && <button className="btn btn-primary" onClick={() => { setEditing(null); setModal(true) }}>+ Add Project</button>}
         </Header>
         <div className="page-content">
-          <DeadlineAlerts projects={projects} />
           <div className="kpi-row">
             <KPICard label="Total Projects"    value={kpis.total}    accent="#1a56db" icon="📋"/>
             <KPICard label="Man Days / Year"   value={kpis.manDays}  accent="#7c3aed" icon="⏱"/>

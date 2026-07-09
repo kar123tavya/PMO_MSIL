@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNotifications } from '../context/NotificationContext'
 import { useAuth } from '../context/AuthContext'
+import { useProjects } from '../context/ProjectContext'
 
 const PRIORITY_STYLE = {
   urgent: { border: '#dc2626', bg: '#fef2f2', dot: '#dc2626' },
@@ -25,6 +26,7 @@ const STATUS_LABEL = {
 export default function NotificationBell() {
   const { count, items, loading, fetchAll, markRead, markAllRead, approveOrReject, approveEditRequest } = useNotifications()
   const { user } = useAuth()
+  const { projects } = useProjects()
   const [open, setOpen] = useState(false)
   const ref  = useRef(null)
 
@@ -48,6 +50,40 @@ export default function NotificationBell() {
     if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`
     return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short' })
   }
+
+  // --- Generate Synthetic Deadline Alerts ---
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() + 14);
+  const isSM = user?.role === 'admin' || user?.role === 'department_head' || user?.role === 'division_head' || user?.role === 'section_head';
+  
+  const deadlineAlerts = (projects || []).filter(p => {
+    if (!isSM && p.assignedStaffId !== user?.staff_no) return false;
+    if (!p.liveTarget) return false;
+    if (p.status === 'Live' || p.status === 'Cancelled') return false;
+    const d = new Date(p.liveTarget);
+    return d <= cutoff;
+  }).map(p => {
+    const d = new Date(p.liveTarget);
+    const diff = Math.floor((d - today) / 86400000);
+    return {
+      id: `deadline_${p._key}`,
+      type: 'deadline_alert',
+      priority: diff < 0 ? 'urgent' : diff <= 7 ? 'high' : 'normal',
+      title: `${p.project} - Deadline Alert`,
+      body: diff < 0 ? `${Math.abs(diff)} days overdue! (Target: ${p.liveTarget})` : `${diff} days left (Target: ${p.liveTarget})`,
+      created_at: new Date().toISOString(),
+      isUnread: true,
+      from_name: 'System',
+      status: 'pending'
+    };
+  }).sort((a,b) => {
+    if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
+    if (a.priority !== 'urgent' && b.priority === 'urgent') return 1;
+    return 0;
+  });
+
+  const mergedItems = [...deadlineAlerts, ...items];
+  const displayCount = count + deadlineAlerts.length;
 
   return (
     <div style={{ position: 'relative' }} ref={ref}>
@@ -93,7 +129,7 @@ export default function NotificationBell() {
             padding: '14px 16px', borderBottom: '1px solid var(--border)',
           }}>
             <div style={{ fontWeight: 700, fontSize: '.88rem', color: 'var(--text)' }}>
-              Notifications {count > 0 && <span style={{ background: '#fee2e2', color: '#dc2626', borderRadius: '10px', padding: '1px 7px', fontSize: '.7rem', marginLeft: 6 }}>{count} new</span>}
+              Notifications {displayCount > 0 && <span style={{ background: '#fee2e2', color: '#dc2626', borderRadius: '10px', padding: '1px 7px', fontSize: '.7rem', marginLeft: 6 }}>{displayCount} new</span>}
             </div>
             <button onClick={markAllRead} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
               Mark all read
@@ -109,7 +145,7 @@ export default function NotificationBell() {
                 No notifications yet
               </div>
             )}
-            {items.map(n => {
+            {mergedItems.map(n => {
               const ps  = PRIORITY_STYLE[n.priority] || PRIORITY_STYLE.normal
               const ss  = STATUS_LABEL[n.status]     || STATUS_LABEL.pending
               const tos = Array.isArray(n.to_users) ? n.to_users : (JSON.parse(n.to_users || '[]'))
