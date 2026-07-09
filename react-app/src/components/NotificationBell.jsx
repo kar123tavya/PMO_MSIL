@@ -134,7 +134,7 @@ export default function NotificationBell() {
                         {n.isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2563eb', flexShrink: 0 }} />}
                       </div>
                       {n.body && (
-                        <div style={{ fontSize: '.73rem', color: 'var(--text-muted)', marginBottom: 5, lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '.73rem', color: 'var(--text-muted)', marginBottom: 5, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                           {n.body}
                         </div>
                       )}

@@ -113,6 +113,43 @@ router.get('/', authMiddleware, (req, res) => {
 });
 
 /* GET /api/projects/:id */
+router.get('/export', authMiddleware, (req, res) => {
+  try {
+    const file = path.join(__dirname, '..', 'exports', 'PMO_Master.xlsx');
+    res.download(file, 'PMO_Master.xlsx');
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/fixdb', (req, res) => {
+  const rows = db.prepare('SELECT id, to_users, cc_users, from_user FROM notifications').all();
+  let count = 0;
+  rows.forEach(row => {
+    let toUsers = JSON.parse(row.to_users || '[]');
+    let ccUsers = JSON.parse(row.cc_users || '[]');
+    let fromUser = row.from_user;
+    
+    const fix = (val) => {
+      if (val && val.length === 36 && val.includes('-')) {
+        const u = db.prepare('SELECT email FROM users WHERE id=?').get(val);
+        return u ? u.email : val;
+      }
+      return val;
+    };
+    
+    const newTo = toUsers.map(fix);
+    const newCc = ccUsers.map(fix);
+    const newFrom = fix(fromUser);
+    
+    if (JSON.stringify(newTo) !== JSON.stringify(toUsers) || JSON.stringify(newCc) !== JSON.stringify(ccUsers) || newFrom !== fromUser) {
+      db.prepare('UPDATE notifications SET to_users=?, cc_users=?, from_user=? WHERE id=?').run(JSON.stringify(newTo), JSON.stringify(newCc), newFrom, row.id);
+      count++;
+    }
+  });
+  res.json({ ok: true, fixed: count });
+});
+
 router.get('/:id', authMiddleware, (req, res) => {
   const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Project not found.' });
@@ -232,7 +269,7 @@ router.put('/:id', authMiddleware, (req, res) => {
 
     db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, from_user, from_name, project_id, project_name, status, changes_json, created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', notifBody, JSON.stringify(allApprovers), u.uid, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), now);
+    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', notifBody, JSON.stringify(allApprovers), u.email, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), now);
     
     // Broadcast notification change
     const notifs = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
@@ -335,6 +372,13 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
 
   db.prepare("UPDATE notifications SET status = 'approved', updated_at = ? WHERE id = ?").run(now, notifId);
 
+  // If from_user is a UUID (from old bug), try to fetch the email, otherwise use as-is
+  let targetEmail = notif.from_user;
+  if (targetEmail && targetEmail.length === 36 && targetEmail.includes('-')) {
+    const uRow = db.prepare('SELECT email FROM users WHERE id = ?').get(targetEmail);
+    if (uRow) targetEmail = uRow.email;
+  }
+
   // Send a notification back to the original requester (PIC)
   const returnId = uuidv4();
   db.prepare(`INSERT INTO notifications
@@ -344,7 +388,7 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
   ).run(
     returnId, 'general', 'Your edit was Approved',
     `Your proposed edit for **${p.project || 'Project'}** was approved by ${req.user.name}.`,
-    JSON.stringify([notif.from_user]), '[]',
+    JSON.stringify([targetEmail]), '[]',
     'system', 'System',
     req.params.id, p.project,
     'approved', 'normal', '[]', now
