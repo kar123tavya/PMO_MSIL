@@ -1,196 +1,303 @@
-# PMO Dashboard — QA Project Monitoring Tool
-### Maruti Suzuki Digital & IT Division
-
-A full-stack intranet web application for monitoring IT/QA projects across divisions, with real-time sync, Gantt charts, and role-based access control.
+# PMO Dashboard — Deployment Guide & Requirements
+## Maruti Suzuki India Limited | QA Division
 
 ---
 
-## Tech Stack
+## 1. SYSTEM REQUIREMENTS
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18 + Vite |
-| Backend | Node.js + Express |
-| Database | SQLite (single file, zero config) |
-| Real-time | Server-Sent Events (SSE) |
-| Auth | JWT (Role-based) |
+### Minimum Hardware
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| RAM       | 2 GB    | 4 GB        |
+| Storage   | 500 MB  | 1 GB        |
+| CPU       | 1 Core  | 2+ Cores    |
+
+### Software Prerequisites (Must Install First)
+
+#### ✅ Node.js (v18 or higher — REQUIRED)
+- Download: https://nodejs.org/en/download/
+- Recommended: LTS version (v20.x or v22.x)
+- Verify install: `node --version` (should show v18+)
+- npm is included with Node.js automatically
+
+#### ✅ Git (for cloning from GitHub)
+- Download: https://git-scm.com/download/win
+- Only needed if cloning from GitHub
 
 ---
 
-## Quick Start (First-time setup)
+## 2. PROJECT STRUCTURE
 
-### Prerequisites
-- **Node.js 18+** → Download from https://nodejs.org
-- No other tools required (no Visual Studio, no databases to install)
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/YOUR_ORG/pmo-dashboard.git
-cd pmo-dashboard
+```
+SafaaiLoop/
+├── package.json               ← Root scripts (install:all, deploy)
+├── README.md                  ← This file
+├── PMO_Master.xlsx            ← Excel master file (auto-synced)
+├── Sample_Template.xlsx       ← Import template for bulk upload
+│
+├── server/                    ← Node.js Backend (Express + SQLite)
+│   ├── server.js              ← Main server entry point (port 3000)
+│   ├── package.json           ← Backend dependencies
+│   ├── .env                   ← Environment variables (API keys)
+│   ├── start.bat              ← One-click Windows start script
+│   ├── pmo_data.db            ← SQLite database (all data stored here)
+│   ├── db/
+│   │   └── schema.js          ← DB schema + seed data
+│   ├── middleware/
+│   │   └── auth.js            ← JWT authentication middleware
+│   ├── routes/
+│   │   ├── auth.js            ← Login/logout endpoints
+│   │   ├── projects.js        ← Project CRUD endpoints
+│   │   ├── users.js           ← User management endpoints
+│   │   ├── settings.js        ← Custom columns + IL phases
+│   │   ├── import-export.js   ← Excel import/export + DB sync
+│   │   ├── notifications.js   ← Notification endpoints
+│   │   ├── audit.js           ← Audit log endpoints
+│   │   ├── history.js         ← Project history endpoints
+│   │   └── ai.js              ← AI chatbot (Grok API) endpoint
+│   └── services/
+│       ├── excelSyncService.js ← Auto-sync DB → Excel every 60s
+│       └── cronService.js      ← Deadline email alerts (daily cron)
+│
+└── react-app/                 ← React Frontend (Vite)
+    ├── package.json           ← Frontend dependencies
+    ├── vite.config.js         ← Vite config (proxy to :3000)
+    ├── index.html             ← HTML entry point
+    ├── dist/                  ← Production build (served by server)
+    └── src/
+        ├── App.jsx            ← Root React component + routing
+        ├── main.jsx           ← React entry point
+        ├── index.css          ← Global styles
+        ├── api/
+        │   └── client.js      ← Axios instance with auth headers
+        ├── context/
+        │   ├── AuthContext.jsx    ← Login state + JWT
+        │   ├── ProjectContext.jsx ← Projects + SSE listener
+        │   └── ToastContext.jsx   ← Toast notification system
+        ├── components/
+        │   ├── Sidebar.jsx        ← Navigation sidebar
+        │   ├── Header.jsx         ← Top bar with search + bell
+        │   ├── ProjectForm.jsx    ← Add/edit project modal
+        │   ├── AppTutorial.jsx    ← Interactive walkthrough (Joyride)
+        │   ├── AIChatWidget.jsx   ← AI chat bubble (Grok)
+        │   ├── ColumnManager.jsx  ← Custom column add/manage
+        │   ├── ApprovalModal.jsx  ← Send for approval UI
+        │   ├── ImportModal.jsx    ← Excel bulk import modal
+        │   ├── KPICard.jsx        ← Dashboard KPI widget
+        │   ├── StatusPill.jsx     ← Colored status badge
+        │   └── RoleBadge.jsx      ← User role badge
+        └── pages/
+            ├── Login.jsx          ← Login screen
+            ├── Dashboard.jsx      ← Main project table view
+            ├── Flagship.jsx       ← Flagship projects tracker
+            ├── Gantt.jsx          ← Gantt chart timeline
+            ├── AuditLog.jsx       ← Full audit trail
+            └── Settings.jsx       ← Admin settings panel
 ```
 
-### 2. Install dependencies
+---
+
+## 3. BACKEND DEPENDENCIES (server/package.json)
+
+| Package             | Version  | Purpose                                    |
+|---------------------|----------|--------------------------------------------|
+| express             | ^4.19.2  | Web server framework                       |
+| bcryptjs            | ^2.4.3   | Password hashing                           |
+| jsonwebtoken        | ^9.0.2   | JWT auth tokens                            |
+| cors                | ^2.8.5   | Cross-origin resource sharing              |
+| dotenv              | ^17.4.2  | Load .env environment variables            |
+| multer              | ^2.2.0   | File upload handling (Excel import)        |
+| node-sqlite3-wasm   | ^0.8.7   | SQLite database (no native bindings)       |
+| xlsx                | ^0.18.5  | Excel read/write (import + export)         |
+| uuid                | ^9.0.1   | Generate unique IDs                        |
+| node-cron           | ^4.6.0   | Scheduled deadline email alerts            |
+| nodemailer          | ^9.0.3   | Send email notifications                   |
+
+---
+
+## 4. FRONTEND DEPENDENCIES (react-app/package.json)
+
+| Package             | Version  | Purpose                                    |
+|---------------------|----------|--------------------------------------------|
+| react               | ^19.2.7  | UI framework                               |
+| react-dom           | ^19.2.7  | React DOM renderer                         |
+| react-router-dom    | ^6.30.4  | Client-side routing                        |
+| axios               | ^1.18.1  | HTTP client (API calls)                    |
+| react-joyride       | ^3.2.0   | Interactive guided tutorial                |
+| html2canvas         | ^1.4.1   | Screenshot/export to PNG                   |
+
+### Dev Dependencies (only needed to rebuild frontend)
+| Package             | Version  | Purpose                                    |
+|---------------------|----------|--------------------------------------------|
+| vite                | ^8.1.1   | Build tool + dev server                    |
+| @vitejs/plugin-react| ^6.0.3   | React plugin for Vite                      |
+| @types/react        | ^19.2.17 | TypeScript types (for IDE hints)           |
+| oxlint              | ^1.71.0  | Linter                                     |
+
+---
+
+## 5. ENVIRONMENT VARIABLES (server/.env)
+
+```
+GROK_API_KEY=your_grok_api_key_here
+PORT=3000   (optional, defaults to 3000)
+JWT_SECRET=your_jwt_secret_here  (optional, has default)
+```
+
+> ⚠️ The `.env` file contains the AI API key. Do NOT share this file publicly.
+
+---
+
+## 6. SETUP INSTRUCTIONS (Fresh Installation)
+
+### Step 1: Clone or Copy the Project
+**Option A — From GitHub:**
 ```bash
-# Install server dependencies
+git clone https://github.com/kar123tavya/PMO_MSIL.git
+cd PMO_MSIL
+```
+**Option B — From ZIP:**
+- Extract `PMO_Dashboard.zip` to a folder (e.g., `C:\PMO_Dashboard\`)
+- Open that folder in a terminal
+
+### Step 2: Install All Dependencies
+Open a terminal (Command Prompt or PowerShell) in the project root folder:
+```bash
+npm run install:all
+```
+This single command installs both backend AND frontend dependencies.
+
+Alternatively, install manually:
+```bash
+# Install backend
 cd server
 npm install
+cd ..
 
-# Install React dependencies
-cd ../react-app
+# Install frontend
+cd react-app
 npm install
 cd ..
 ```
 
-### 3. Build the React frontend
+### Step 3: Build the Frontend
 ```bash
 cd react-app
 npm run build
 cd ..
 ```
+This creates `react-app/dist/` which is served by the backend.
 
-### 4. Start the server
+### Step 4: Start the Server
+**Option A — Using batch file (Windows, easiest):**
+```
+Double-click: server/start.bat
+```
+
+**Option B — Using npm:**
 ```bash
 cd server
 node server.js
 ```
 
-### 5. Open in browser
+**Option C — From project root:**
+```bash
+npm start
+```
+
+### Step 5: Open in Browser
 ```
 http://localhost:3000
 ```
 
-**Default login:** `admin@maruti.co.in` / `admin123`
-> Change the admin password immediately after first login.
+---
+
+## 7. DEFAULT LOGINS
+
+| Role          | Email                    | Password  |
+|---------------|--------------------------|-----------|
+| Administrator | admin@maruti.co.in       | admin123  |
+| PIC (User)    | kartavya1@maruti.co.in   | pass123   |
+
+> ⚠️ Change these passwords immediately in a production environment!
 
 ---
 
-## One-Command Start (Windows)
-Double-click `server/start.bat` — it installs dependencies and starts the server automatically.
+## 8. FEATURES & WHAT EACH DOES
+
+| Feature               | Description                                                              |
+|-----------------------|--------------------------------------------------------------------------|
+| Dashboard             | Master project table with filters, KPI cards, search                     |
+| Flagship View         | IL lifecycle tracker for flagship projects (table with phases)            |
+| Gantt Chart           | Visual timeline of all projects with IL bars (4yr window, today line)    |
+| Audit Log             | Full history of all changes made to projects                             |
+| Import / Export       | Bulk upload projects via Excel; export filtered view to Excel            |
+| Custom Columns        | Add extra columns to dashboard/flagship/gantt (admin = instant, PIC = pending) |
+| Approval Workflow     | PIC edits go to admin for approval; admin edits are instant              |
+| Notifications         | Bell icon shows all pending approvals and system alerts                  |
+| AI Chat               | Grok-powered AI assistant for project queries                            |
+| Interactive Tutorial  | Guided walkthrough of the app with close button at any step              |
+| Excel Auto-Sync       | PMO_Master.xlsx auto-syncs with DB every 60 seconds                      |
+| Email Alerts          | Daily cron job sends email reminders for upcoming project deadlines      |
+| Role-Based Access     | admin / section_head / senior_manager / pic roles with different permissions |
 
 ---
 
-## Project Structure
+## 9. USER ROLES & PERMISSIONS
 
-```
-SafaaiLoop/
-├── server/                  ← Node.js + Express backend
-│   ├── server.js            ← Main server entry point
-│   ├── pmo_data.db          ← SQLite database (auto-created)
-│   ├── db/schema.js         ← Database schema & seeding
-│   ├── middleware/auth.js   ← JWT verification
-│   └── routes/              ← API route handlers
-│       ├── auth.js          ← Login, register
-│       ├── projects.js      ← Project CRUD
-│       ├── users.js         ← User management
-│       ├── history.js       ← Audit log
-│       └── settings.js      ← Custom columns, IL phases
-│
-├── react-app/               ← React 18 + Vite frontend
-│   ├── src/
-│   │   ├── pages/           ← Dashboard, Flagship, Gantt, Login
-│   │   ├── components/      ← Sidebar, Modal, ProjectForm, etc.
-│   │   ├── context/         ← Auth, Project, Toast contexts
-│   │   └── api/             ← Axios client, SSE hook
-│   └── dist/                ← Production build (after npm run build)
-│
-└── pmo_dashboard/           ← Legacy HTML frontend (fallback)
-```
+| Action                         | admin | section_head | senior_manager | pic    |
+|-------------------------------|-------|--------------|----------------|--------|
+| View all projects              | ✅    | ✅           | ✅             | ✅     |
+| Add/Edit project (own div)     | ✅    | ✅           | ✅             | ✅     |
+| Edit cross-division project    | ✅    | ✅           | ✅             | ⚠️ (needs reason) |
+| Delete project                 | ✅    | ✅           | ✅             | ❌     |
+| Approve project edits          | ✅    | ✅           | ✅             | ❌     |
+| Add column (instant)           | ✅    | ✅           | ✅             | ❌     |
+| Add column (needs approval)    | ❌    | ❌           | ❌             | ✅     |
+| Manage users                   | ✅    | ❌           | ❌             | ❌     |
+| Import Excel data              | ✅    | ✅           | ✅             | ❌     |
+| Trigger email alerts           | ✅    | ❌           | ❌             | ❌     |
 
 ---
 
-## API Reference
+## 10. NETWORK ACCESS (LAN Sharing)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/auth/login` | No | Login → returns JWT token |
-| POST | `/api/auth/register` | No | Register (pending approval) |
-| GET | `/api/projects` | JWT | List all projects |
-| POST | `/api/projects` | JWT (SM/SH) | Create project |
-| PUT | `/api/projects/:id` | JWT | Update project |
-| DELETE | `/api/projects/:id` | JWT (SM) | Delete project |
-| GET | `/api/users` | JWT | List users |
-| POST | `/api/users` | JWT (SM) | Create/update user |
-| GET | `/api/history` | JWT | Audit log |
-| GET | `/api/settings/:key` | JWT | Get setting |
-| POST | `/api/settings/:key` | JWT (SM) | Update setting |
-| GET | `/api/events?token=JWT` | JWT | SSE real-time stream |
-| GET | `/api/health` | No | Health check |
+To let other users on the same network access the dashboard:
+1. Start the server (it binds to `0.0.0.0` — all interfaces)
+2. Find your PC's local IP: Run `ipconfig` → look for IPv4 Address (e.g., `192.168.1.100`)
+3. Share the URL: `http://192.168.1.100:3000`
+4. Other users on the same WiFi/LAN can open this URL in their browser
+
+> No other software (IIS, nginx, Apache) is needed for LAN use.
 
 ---
 
-## Roles & Permissions
+## 11. TROUBLESHOOTING
 
-| Role | Code | Can Do |
-|------|------|--------|
-| Senior Manager | `senior_manager` | Everything — full access |
-| Section Head | `section_head` | Manage projects in their division |
-| Deputy Manager | `deputy_manager` | Update assigned projects |
-| Viewer | `viewer` | Read-only + export |
+| Problem                         | Solution                                                     |
+|---------------------------------|--------------------------------------------------------------|
+| `node` not found                | Install Node.js from nodejs.org and restart terminal         |
+| Port 3000 already in use        | Change `PORT=3001` in `server/.env`                         |
+| White/blank page                | Run `npm run build` in react-app first, then restart server  |
+| Login fails                     | Server may not be running; check terminal for errors         |
+| Excel import not working        | Ensure file follows Sample_Template.xlsx column headers      |
+| AI chat says API error          | Check GROK_API_KEY in server/.env                           |
+| DB lock error on startup        | Delete `server/pmo_data.db.lock` folder and restart          |
 
 ---
 
-## Deployment (MSIL Intranet — Windows Server + IIS)
+## 12. GITHUB REPOSITORY
 
-### Option A: Run directly with Node.js
+Repository: https://github.com/kar123tavya/PMO_MSIL
+Branch: master
+
+To pull latest updates:
 ```bash
-cd server
-node server.js
-```
-Access at `http://SERVER_IP:3000`
-
-### Option B: Run as Windows Service (Recommended for Production)
-```bash
-# Install PM2 globally
-npm install -g pm2
-
-# Start the server as a managed process
-cd server
-pm2 start server.js --name pmo-dashboard
-
-# Auto-start on Windows boot
-pm2 save
-pm2 startup
-```
-
-### Option C: IIS Reverse Proxy
-1. Install **iisnode** from https://github.com/Azure/iisnode
-2. In IIS, add a new site pointing to the `server/` folder
-3. Or configure IIS as a reverse proxy to `http://localhost:3000`
-
----
-
-## Environment Variables
-
-Create `server/.env` for production:
-```env
-PORT=3000
-JWT_SECRET=your_strong_random_secret_here
-```
-
-> ⚠️ **Change `JWT_SECRET`** before deploying to production.
-
----
-
-## Database Backup
-
-The entire database is a single file: `server/pmo_data.db`
-
-**Backup:** Copy this file to a network share or SharePoint.
-**Restore:** Replace the file and restart the server.
-
----
-
-## Upgrading
-
-```bash
-git pull origin main
-cd react-app && npm run build && cd ..
-# Restart server (or PM2 will auto-restart)
-pm2 restart pmo-dashboard
+git pull origin master
+cd react-app && npm run build
+# Restart server
 ```
 
 ---
 
-## Support
-
-For issues, raise a request via the MSIL IT helpdesk or contact the Digital & IT Division.
+*Generated: July 2026 | PMO Dashboard v1.0 | MSIL QA Division*

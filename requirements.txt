@@ -1,0 +1,89 @@
+
+# ============================================================
+# PMO Dashboard — Requirements
+# Maruti Suzuki India Limited | QA Division
+# ============================================================
+
+# ============================================================
+# SYSTEM / RUNTIME (must install manually)
+# ============================================================
+# Node.js >= 18.0.0  (includes npm)
+#   Download: https://nodejs.org/en/download/
+#   Recommended: LTS version (v20.x or v22.x)
+#   Command to verify: node --version
+
+# ============================================================
+# BACKEND NODE PACKAGES  (auto-installed via: npm install)
+# Located in: server/
+# ============================================================
+
+express@^4.19.2            # Web server framework (REST API)
+bcryptjs@^2.4.3            # Secure password hashing
+jsonwebtoken@^9.0.2        # JWT authentication tokens
+cors@^2.8.5                # Cross-origin resource sharing
+dotenv@^17.4.2             # Load .env environment variables
+multer@^2.2.0              # File upload middleware (Excel import)
+node-sqlite3-wasm@^0.8.7   # SQLite database (no native build needed)
+xlsx@^0.18.5               # Excel file read/write (import + export)
+uuid@^9.0.1                # Generate unique IDs
+node-cron@^4.6.0           # Scheduled cron jobs (email deadlines)
+nodemailer@^9.0.3          # Send SMTP email notifications
+
+# ============================================================
+# FRONTEND NODE PACKAGES  (auto-installed via: npm install)
+# Located in: react-app/
+# ============================================================
+
+react@^19.2.7              # UI component library
+react-dom@^19.2.7          # React DOM renderer
+react-router-dom@^6.30.4   # Client-side routing
+axios@^1.18.1              # HTTP client for API calls
+react-joyride@^3.2.0       # Interactive guided tutorial overlay
+html2canvas@^1.4.1         # Export page/element to PNG screenshot
+
+# ============================================================
+# FRONTEND DEV PACKAGES  (needed only to rebuild the frontend)
+# Located in: react-app/
+# ============================================================
+
+vite@^8.1.1                # Fast build tool + dev server
+@vitejs/plugin-react@^6.0.3 # Vite plugin for React JSX
+@types/react@^19.2.17      # TypeScript type hints for React
+@types/react-dom@^19.2.3   # TypeScript type hints for React DOM
+oxlint@^1.71.0             # JavaScript linter
+
+# ============================================================
+# INSTALLATION COMMANDS (run from project root folder)
+# ============================================================
+# 
+# Step 1: Install all dependencies (one command):
+#   npm run install:all
+#
+# Step 2: Build frontend:
+#   cd react-app && npm run build && cd ..
+#
+# Step 3: Start server:
+#   cd server && node server.js
+#   -- OR double-click server/start.bat
+#
+# Step 4: Open browser:
+#   http://localhost:3000
+#
+
+# ============================================================
+# ENVIRONMENT VARIABLES  (server/.env)
+# ============================================================
+# GROK_API_KEY=gsk_...    ← AI chatbot API key (Grok by xAI)
+# PORT=3000               ← Server port (optional, default 3000)
+# JWT_SECRET=...          ← JWT secret (optional, has default)
+
+# ============================================================
+# WHAT IS NOT NEEDED
+# ============================================================
+# ✗ Python          (not used)
+# ✗ pip packages    (not used)
+# ✗ MySQL/PostgreSQL (SQLite is embedded, no DB server needed)
+# ✗ Redis           (not used)
+# ✗ Docker          (not needed for local/LAN deployment)
+# ✗ IIS / nginx     (not needed, Express serves everything)
+# ✗ Windows Admin   (no admin rights needed to run)
