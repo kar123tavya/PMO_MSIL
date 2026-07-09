@@ -4,7 +4,7 @@
 //              MSIL Intranet Deployment
 // ═══════════════════════════════════════════════════════
 'use strict';
-
+require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
@@ -64,6 +64,7 @@ const settingsRoutes      = require('./routes/settings');
 const importExportRoutes  = require('./routes/import-export');
 const notificationRoutes  = require('./routes/notifications');
 const auditRoutes         = require('./routes/audit');
+const aiRoutes            = require('./routes/ai');
 
 const { initExcelSync }   = require('./services/excelSyncService');
 
@@ -81,6 +82,7 @@ app.use('/api/history',       historyRoutes);
 app.use('/api/settings',      settingsRoutes.router);
 app.use('/api/notifications', notificationRoutes.router);
 app.use('/api/audit',         auditRoutes);
+app.use('/api/ai',            aiRoutes);
 
 /* ── Serve frontend static files ── */
 // In production: serve React build from react-app/dist/

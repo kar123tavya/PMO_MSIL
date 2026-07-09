@@ -11,6 +11,7 @@ import Flagship  from './pages/Flagship'
 import Gantt     from './pages/Gantt'
 import AuditLog  from './pages/AuditLog'
 import Users     from './pages/Users'
+import AIChatWidget from './components/AIChatWidget'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
               <Route path="/users"    element={<ProtectedRoute><Users /></ProtectedRoute>} />
               <Route path="*"         element={<Navigate to="/" replace />} />
             </Routes>
+            <AIChatWidget />
           </NotificationProvider>
         </ProjectProvider>
       </ToastProvider>
