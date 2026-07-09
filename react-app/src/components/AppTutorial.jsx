@@ -39,7 +39,7 @@ export default function AppTutorial() {
     },
     // 2
     {
-      target: 'a[href="/flagship"]',
+      target: '#nav-flagship',
       content: 'Let\'s check out Flagship Projects. We will navigate there now to see how you can track critical milestones.',
       placement: 'right',
     },
@@ -51,7 +51,7 @@ export default function AppTutorial() {
     },
     // 4
     {
-      target: 'a[href="/gantt"]',
+      target: '#nav-gantt',
       content: 'Now, let\'s head over to the Gantt Chart to see project timelines!',
       placement: 'right',
     },
@@ -63,7 +63,7 @@ export default function AppTutorial() {
     },
     // 6
     {
-      target: 'a[href="/"]',
+      target: '#nav-dashboard',
       content: 'Let\'s head back to the main Dashboard to explore the management tools.',
       placement: 'right',
     },
@@ -126,7 +126,7 @@ export default function AppTutorial() {
       return;
     }
 
-    if (type === EVENTS.STEP_AFTER) {
+    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
       // Determine direction
       const nextStepIndex = index + (action === ACTIONS.PREV ? -1 : 1);
       

@@ -33,6 +33,7 @@ export default function Sidebar() {
             key={n.to}
             to={n.to}
             end={n.end}
+            id={`nav-${n.to.replace('/','') || 'dashboard'}`}
             className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
           >
             <span className="nav-icon">{n.icon}</span>
