@@ -4,6 +4,7 @@ import Header  from '../components/Header'
 import { useProjects } from '../context/ProjectContext'
 import html2canvas from 'html2canvas'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 import ColumnManager from '../components/ColumnManager'
 
 const IL_COLORS = ['#7c3aed','#0369a1','#15803d','#b45309','#b91c1c']

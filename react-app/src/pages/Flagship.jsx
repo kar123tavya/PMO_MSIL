@@ -27,7 +27,7 @@ function fmtDate(str) {
 
 export default function Flagship() {
   const { projects, loading, saveProject, deleteProject } = useProjects()
-  const { can }      = useAuth()
+  const { can, user } = useAuth()
   const { showToast }= useToast()
 
   const [search, setSearch] = useState('')
