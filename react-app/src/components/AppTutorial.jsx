@@ -16,6 +16,7 @@ export default function AppTutorial() {
       if (window.location.pathname !== '/') {
         navigate('/');
       }
+      setRun(false); // Reset completely
       setStepIndex(0);
       setTimeout(() => setRun(true), 400); // Give time for transition
     };
@@ -26,7 +27,7 @@ export default function AppTutorial() {
   const steps = [
     // 0
     {
-      target: 'body',
+      target: '.app-shell',
       content: 'Welcome to the PMO Dashboard Tutorial! Let\'s take a comprehensive tour of the platform.',
       placement: 'center',
       disableBeacon: true,
@@ -45,7 +46,7 @@ export default function AppTutorial() {
     },
     // 3 - Flagship View
     {
-      target: 'body',
+      target: '.app-shell',
       content: 'This is the Flagship Projects view! You can visually track high-priority projects through their IL lifecycle here. Click any project card here to edit or update phases.',
       placement: 'center',
     },
@@ -57,7 +58,7 @@ export default function AppTutorial() {
     },
     // 5 - Gantt View
     {
-      target: 'body',
+      target: '.app-shell',
       content: 'The Gantt Chart provides a graphical timeline of all active projects, comparing target dates against actual progress. Double-click a bar to edit its details.',
       placement: 'center',
     },
@@ -120,10 +121,15 @@ export default function AppTutorial() {
   const handleJoyrideCallback = (data) => {
     const { action, index, status, type } = data;
 
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status) || type === EVENTS.TOUR_END) {
       setRun(false);
       setStepIndex(0);
       return;
+    }
+    if (status === STATUS.ERROR) {
+       setRun(false);
+       setStepIndex(0);
+       return;
     }
 
     if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
