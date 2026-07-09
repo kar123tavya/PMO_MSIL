@@ -121,7 +121,7 @@ export default function AIChatWidget() {
         
         {/* Header */}
         <div style={{
-          backgroundColor: 'var(--primary)',
+          backgroundColor: 'var(--brand)',
           color: 'white',
           padding: '16px',
           display: 'flex',
@@ -176,7 +176,7 @@ export default function AIChatWidget() {
                 maxWidth: '85%',
                 padding: '10px 14px',
                 borderRadius: '12px',
-                backgroundColor: msg.role === 'user' ? 'var(--primary)' : (msg.isError ? '#fee2e2' : 'var(--surface)'),
+                backgroundColor: msg.role === 'user' ? 'var(--brand)' : (msg.isError ? '#fee2e2' : 'var(--surface)'),
                 color: msg.role === 'user' ? 'white' : (msg.isError ? '#991b1b' : 'var(--text-color)'),
                 border: msg.role === 'assistant' && !msg.isError ? '1px solid var(--border-color)' : 'none',
                 lineHeight: '1.4',
@@ -234,7 +234,7 @@ export default function AIChatWidget() {
               width: '40px',
               height: '40px',
               borderRadius: '20px',
-              backgroundColor: input.trim() && !isLoading ? 'var(--primary)' : 'var(--border-color)',
+              backgroundColor: input.trim() && !isLoading ? 'var(--brand)' : 'var(--border-color)',
               color: 'white',
               border: 'none',
               display: 'flex',
@@ -256,7 +256,7 @@ export default function AIChatWidget() {
           }
           .dot-pulse {
             animation: pulse 1.4s infinite ease-in-out both;
-            color: var(--primary);
+            color: var(--brand);
             font-size: 10px;
           }
         `}} />

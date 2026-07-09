@@ -126,7 +126,7 @@ export default function AppTutorial() {
       return;
     }
 
-    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
+    if (type === EVENTS.STEP_AFTER) {
       // Determine direction
       const nextStepIndex = index + (action === ACTIONS.PREV ? -1 : 1);
       

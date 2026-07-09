@@ -16,7 +16,7 @@ router.post('/chat', authMiddleware, async (req, res) => {
     }
 
     // Fetch PMO data to provide as context
-    const rows = db.prepare('SELECT id, parent_code, project, theme, division, status, category, fy, live_target, live_actual, overall_status FROM projects ORDER BY created_at DESC').all();
+    const rows = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
 
     // Simplify the data so we don't overwhelm the token limit with unused fields
     const pmoContext = rows.map(r => ({
@@ -28,6 +28,14 @@ router.post('/chat', authMiddleware, async (req, res) => {
       Category: r.category || 'N/A',
       FinancialYear: r.fy || 'N/A',
       TargetDate: r.live_target || 'N/A',
+      ManHoursPerMonth: r.manhours || 0,
+      ProactiveDefects: r.proactive_defect || 0,
+      UseCases: r.use_cases || 0,
+      CostSaved: r.direct_cost || 0,
+      IsFlagship: r.flagship ? 'Yes' : 'No',
+      IsCritical: r.critical ? 'Yes' : 'No',
+      IsMIS: r.mis ? 'Yes' : 'No',
+      AssignedTo: r.assigned_to || 'N/A',
       Remarks: r.overall_status || ''
     }));
 
