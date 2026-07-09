@@ -5,13 +5,19 @@ import { useAuth } from '../context/AuthContext';
 export default function AIChatWidget() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
+  const defaultMessages = [
     { role: 'assistant', content: 'Hello! I am your AI PMO Assistant powered by Grok. You can ask me questions about your projects, deadlines, and dashboard statistics.' }
-  ]);
+  ];
+  const [messages, setMessages] = useState(defaultMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const widgetRef = useRef(null);
+
+  // Reset chat when user changes (logout/login)
+  useEffect(() => {
+    setMessages(defaultMessages);
+  }, [user?.email]);
 
   // Close when clicking outside
   useEffect(() => {
@@ -123,19 +129,23 @@ export default function AIChatWidget() {
             </svg>
             <strong style={{ fontSize: '1rem', fontWeight: '600' }}>Grok AI Assistant</strong>
           </div>
-          <button 
-            onClick={() => setIsOpen(false)}
-            style={{
-              background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: '4px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button 
+              onClick={() => setMessages(defaultMessages)}
+              style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8, fontSize: '1.2rem', padding: 0 }}
+              title="Clear Chat"
+            >
+              🗑️
+            </button>
+            <button 
+              onClick={() => setIsOpen(false)}
+              style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8, padding: 0 }}
+            >
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Message Area */}
