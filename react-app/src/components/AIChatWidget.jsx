@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 export default function AIChatWidget() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const defaultMessages = [
     { role: 'assistant', content: 'Hello! I am your AI PMO Assistant powered by Grok. You can ask me questions about your projects, deadlines, and dashboard statistics.' }
   ];
@@ -65,14 +66,18 @@ export default function AIChatWidget() {
   return (
     <div ref={widgetRef}>
       {/* Floating Chat Button */}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
+      <button
+        onClick={() => setIsOpen(true)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         style={{
           position: 'fixed',
           bottom: '24px',
           right: '24px',
           height: '56px',
-          padding: '0 24px',
+          padding: isHovered ? '0 24px' : '0',
+          width: isHovered ? 'auto' : '56px',
+          maxWidth: isHovered ? '400px' : '56px',
           borderRadius: '28px',
           backgroundColor: '#ea580c', /* Orange-Red to stand out */
           color: 'white',
@@ -82,18 +87,27 @@ export default function AIChatWidget() {
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: isHovered ? '12px' : '0',
           justifyContent: 'center',
-          transition: 'transform 0.2s',
+          transition: 'all 0.3s ease',
           transform: isOpen ? 'scale(0)' : 'scale(1)',
           opacity: isOpen ? 0 : 1,
           fontFamily: 'inherit',
           fontSize: '0.95rem',
-          fontWeight: 600
+          fontWeight: 600,
+          overflow: 'hidden',
+          whiteSpace: 'nowrap'
         }}
       >
-        <span>Hey {user?.name ? user.name.split(' ')[0] : 'there'}, How can I help you?</span>
-        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <span style={{ 
+          opacity: isHovered ? 1 : 0, 
+          width: isHovered ? 'auto' : 0,
+          display: isHovered ? 'block' : 'none',
+          transition: 'opacity 0.2s'
+        }}>
+          Hey {user?.name ? user.name.split(' ')[0] : 'there'}, How can I help you?
+        </span>
+        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       </button>

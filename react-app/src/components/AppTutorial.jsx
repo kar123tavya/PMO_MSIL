@@ -109,8 +109,8 @@ export default function AppTutorial() {
   };
 
   if (!user) return null;
-  // If we are not on the dashboard, and the tutorial is NOT running, we don't necessarily want to render Joyride and attach it.
-  // Wait, if we keep it mounted, we just pass the run state. It's safer to only run it on Dashboard.
+  if (!run) return null;
+
   if (location.pathname !== '/') {
       return null;
   }
