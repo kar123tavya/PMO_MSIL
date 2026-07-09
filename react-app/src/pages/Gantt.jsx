@@ -199,7 +199,7 @@ export default function Gantt() {
     <div className="app-shell">
       <Sidebar/>
       <div className="app-main">
-        <Header title="Gantt Chart" searchValue={search} onSearch={setSearch} />
+        <Header title="Gantt Chart" />
 
         {/* Toolbar */}
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 14px',background:'var(--surface)',borderBottom:'1px solid var(--border)',flexWrap:'wrap'}}>
@@ -224,7 +224,17 @@ export default function Gantt() {
         <div id="gantt-full-view" style={{display:'flex',height:'calc(100vh - 60px - 49px)',overflow:'hidden'}}>
           {/* Left labels */}
           <div ref={sidebarRef} onScroll={handleScroll} style={{width:260,flexShrink:0,borderRight:'1px solid var(--border)',overflowY:'auto',background:'var(--surface)',overflowX:'hidden'}}>
-            <div style={{height:52,display:'flex',alignItems:'center',padding:'0 12px',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',fontWeight:700,fontSize:'.72rem',color:'var(--text-muted)',textTransform:'uppercase',position:'sticky',top:0,zIndex:5}}>Project / Phase</div>
+            {/* Search box in sidebar */}
+            <div style={{padding:'8px 10px',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',position:'sticky',top:0,zIndex:6}}>
+              <input
+                type="text"
+                placeholder="🔍 Search projects..."
+                value={search}
+                onChange={e=>setSearch(e.target.value)}
+                style={{width:'100%',padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',fontSize:'0.78rem',background:'var(--bg-color)',color:'var(--text)',boxSizing:'border-box'}}
+              />
+            </div>
+            <div style={{height:34,display:'flex',alignItems:'center',padding:'0 12px',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',fontWeight:700,fontSize:'.72rem',color:'var(--text-muted)',textTransform:'uppercase',position:'sticky',top:46,zIndex:5}}>Project / Phase</div>
             {filtered.map(p=>(
               <div key={p._key}>
                 <div style={{padding:'0 10px',fontWeight:700,fontSize:'.78rem',color:'var(--primary)',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',height:ROW_H_PRJ,display:'flex',alignItems:'center',overflow:'hidden'}}>

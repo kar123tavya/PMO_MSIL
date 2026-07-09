@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Joyride, STATUS } from 'react-joyride';
+import { Joyride, STATUS, EVENTS } from 'react-joyride';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -11,12 +11,8 @@ export default function AppTutorial() {
 
   useEffect(() => {
     const handleStart = () => {
-      // Always bring user back to dashboard for the tutorial
-      if (window.location.pathname !== '/') {
-        navigate('/');
-      }
-      // Brief delay to ensure dashboard is mounted
-      setTimeout(() => setRun(true), 500); 
+      if (window.location.pathname !== '/') navigate('/');
+      setTimeout(() => setRun(true), 500);
     };
     window.addEventListener('start-tutorial', handleStart);
     return () => window.removeEventListener('start-tutorial', handleStart);
@@ -25,13 +21,13 @@ export default function AppTutorial() {
   const steps = [
     {
       target: '.sidebar-brand',
-      content: 'Welcome to the PMO Dashboard Tutorial! Let\'s take a comprehensive tour of the platform features available here.',
+      content: 'Welcome to the PMO Dashboard! This tour will walk you through all the key features. Click Next to continue, or press the ✕ button at any time to close.',
       placement: 'right',
       disableBeacon: true,
     },
     {
       target: '#nav-flagship',
-      content: 'You can navigate to Flagship Projects to visually track high-priority initiatives through their IL lifecycle.',
+      content: 'Navigate to Flagship Projects to visually track high-priority initiatives through their IL lifecycle.',
       placement: 'right',
       disableBeacon: true,
     },
@@ -67,7 +63,7 @@ export default function AppTutorial() {
     },
     {
       target: '#tour-table',
-      content: 'This is the Master Project Table. You can click on any Project Name in this list to edit its details, update its phases, or delete it.',
+      content: 'This is the Master Project Table. Click any Project Name to edit its details, update its phases, or delete it.',
       placement: 'top',
       disableBeacon: true,
     },
@@ -79,41 +75,45 @@ export default function AppTutorial() {
     },
     {
       target: '#tour-import',
-      content: 'Need to add many projects at once? Use the Import button to upload an Excel file and bulk-create projects.',
+      content: 'Need to add many projects at once? Use Import to upload an Excel file and bulk-create projects.',
       placement: 'bottom',
       disableBeacon: true,
     },
     {
       target: '#tour-export',
-      content: 'Export your current filtered view (or all data) to a pristine Excel file with a single click.',
+      content: 'Export your current filtered view to a clean Excel file with a single click.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '#tour-columns',
       content: 'Click here to show, hide, and reorder the table columns exactly how you want them.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '.header-right',
-      content: 'Keep an eye on the Notification Bell for approval requests and the Tasks List for your upcoming deadlines. Enjoy!',
+      content: 'Keep an eye on the Notification Bell for approval requests. Enjoy the platform!',
       placement: 'left',
+      disableBeacon: true,
     }
   ];
 
   const handleJoyrideCallback = (data) => {
     const { status, type } = data;
-    const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
-    if (finishedStatuses.includes(status) || status === STATUS.ERROR || type === 'tour:end') {
+    // Stop tour on: finished, skipped, error, close button clicked, or overlay clicked
+    if (
+      [STATUS.FINISHED, STATUS.SKIPPED].includes(status) ||
+      status === STATUS.ERROR ||
+      type === EVENTS.TOUR_END ||
+      type === EVENTS.TARGET_NOT_FOUND
+    ) {
       setRun(false);
     }
   };
 
-  if (!user) return null;
-  if (!run) return null;
-
-  if (location.pathname !== '/') {
-      return null;
-  }
+  // Only render when running and on dashboard
+  if (!user || !run || location.pathname !== '/') return null;
 
   return (
     <Joyride
@@ -123,8 +123,16 @@ export default function AppTutorial() {
       scrollToFirstStep
       showProgress
       showSkipButton
+      disableOverlayClose={false}
       hideCloseButton={false}
       callback={handleJoyrideCallback}
+      locale={{
+        back: 'Back',
+        close: '✕ Close',
+        last: 'Finish',
+        next: 'Next →',
+        skip: 'Skip Tour',
+      }}
       styles={{
         options: {
           primaryColor: '#004F98',
@@ -132,7 +140,18 @@ export default function AppTutorial() {
           backgroundColor: '#ffffff',
           arrowColor: '#ffffff',
           zIndex: 10000,
-        }
+        },
+        buttonClose: {
+          color: '#64748b',
+          fontSize: 18,
+          fontWeight: 700,
+          top: 8,
+          right: 8,
+        },
+        buttonSkip: {
+          color: '#ef4444',
+          fontWeight: 600,
+        },
       }}
     />
   );

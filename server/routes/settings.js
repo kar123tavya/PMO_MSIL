@@ -30,19 +30,35 @@ router.get('/columns', authMiddleware, (req, res) => {
 router.post('/columns', authMiddleware, (req, res) => {
   try {
     const { id, label, type, views } = req.body;
-    const isSM = ['senior_manager', 'admin', 'section_head'].includes(req.user.role);
-    const status = isSM ? 'approved' : 'pending';
+    const isAdmin = ['senior_manager', 'admin', 'section_head'].includes(req.user.role);
+    // Admin changes are instantly approved; PIC changes need approval
+    const status = isAdmin ? 'approved' : 'pending';
     const now = new Date().toISOString();
+    const { v4: uuidv4 } = require('uuid');
 
     db.prepare(`INSERT INTO custom_columns (id, label, type, views, status, created_by, created_at) VALUES (?,?,?,?,?,?,?)`)
       .run(id, label, type, JSON.stringify(views||[]), status, req.user.email, now);
-    
-    if (!isSM) {
-      const { v4: uuidv4 } = require('uuid');
-      db.prepare(`INSERT INTO notifications (id, type, title, body, status, created_at) VALUES (?,?,?,?,?,?)`)
-        .run(uuidv4(), 'column_approval', 'New Column Request', `${req.user.name} proposed column: ${label}`, 'pending', now);
+
+    if (isAdmin) {
+      // Broadcast the column change to all connected clients immediately
+      _broadcast('settings_changed', { key: 'custom_columns', value: null });
+      // Notify all PICs about the new column
+      const pics = db.prepare("SELECT id, name FROM users WHERE role='pic' AND status='active'").all();
+      pics.forEach(pic => {
+        db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, status, priority, created_at)
+          VALUES (?,?,?,?,?,?,?,?)`.replace(/\n\s+/g, ' '))
+          .run(uuidv4(), 'column_update', 'Dashboard Column Updated',
+            `Admin ${req.user.name} added a new column: "${label}" to the dashboard.`,
+            JSON.stringify([pic.id]), 'unread', 'normal', now);
+      });
+    } else {
+      // Non-admin: send approval request notification to admins
+      db.prepare(`INSERT INTO notifications (id, type, title, body, status, priority, created_at) VALUES (?,?,?,?,?,?,?)`)
+        .run(uuidv4(), 'column_approval', 'New Column Request',
+          `${req.user.name} proposed a new column: "${label}". Please review and approve.`,
+          'pending', 'high', now);
     }
-    
+
     res.json({ ok: true, status });
   } catch (err) {
     res.status(500).json({ error: err.message });
