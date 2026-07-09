@@ -286,7 +286,9 @@ router.put('/:id', authMiddleware, (req, res) => {
 
 /* PUT /api/projects/:id/approve_edit */
 router.put('/:id/approve_edit', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager') return res.status(403).json({ error: 'Only admins can approve edits.' });
+  if (!['admin', 'department_head', 'division_head', 'section_head'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Insufficient permissions to approve edits.' });
+  }
   
   const notifId = req.body.notificationId;
   const notif = db.prepare("SELECT * FROM notifications WHERE id = ? AND type = 'edit_approval'").get(notifId);
@@ -321,6 +323,22 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
   const diffs = computeDiffs(p, existing);
 
   db.prepare("UPDATE notifications SET status = 'approved', updated_at = ? WHERE id = ?").run(now, notifId);
+
+  // Send a notification back to the original requester (PIC)
+  const returnId = uuidv4();
+  db.prepare(`INSERT INTO notifications
+    (id, type, title, body, to_users, cc_users, from_user, from_name,
+     project_id, project_name, status, priority, read_by, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(
+    returnId, 'general', 'Your edit was Approved',
+    `Your proposed edit for **${p.project || 'Project'}** was approved by ${req.user.name}.`,
+    JSON.stringify([notif.from_user]), '[]',
+    'system', 'System',
+    req.params.id, p.project,
+    'approved', 'normal', '[]', now
+  );
+  _broadcast('notification_new', { id: returnId, type: 'general', title: 'Your edit was Approved', priority: 'normal', from_name: 'System' });
 
   if (diffs.length > 0) {
     const stmt = db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,field_name,from_val,to_val,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?)`);

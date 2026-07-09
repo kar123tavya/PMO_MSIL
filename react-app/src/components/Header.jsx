@@ -1,5 +1,6 @@
 import React from 'react'
 import NotificationBell from './NotificationBell'
+import TasksList from './TasksList'
 
 export default function Header({ title, searchValue, onSearch, children }) {
   return (
@@ -22,6 +23,7 @@ export default function Header({ title, searchValue, onSearch, children }) {
       </div>
       <div className="header-right">
         {children}
+        <TasksList />
         <NotificationBell />
       </div>
     </header>
