@@ -140,19 +140,20 @@ export default function Gantt() {
     let mn=Infinity, mx=-Infinity
     filtered.forEach(p=>{
       (p.il_phases||[]).forEach(il=>{
-        if(il.startDate) mn=Math.min(mn,msOf(il.startDate))
-        if(il.endDate)   mx=Math.max(mx,msOf(il.endDate))
-        if(il.targetStart) mn=Math.min(mn,msOf(il.targetStart))
-        if(il.targetEnd)   mx=Math.max(mx,msOf(il.targetEnd))
-        if(il.actualStart) mn=Math.min(mn,msOf(il.actualStart))
-        if(il.actualEnd)   mx=Math.max(mx,msOf(il.actualEnd))
+        const is = msOf(il.startDate), ie = msOf(il.endDate)
+        const ts = msOf(il.targetStart), te = msOf(il.targetEnd)
+        const as = msOf(il.actualStart), ae = msOf(il.actualEnd)
+        if(is) mn=Math.min(mn,is); if(ie) mx=Math.max(mx,ie)
+        if(ts) mn=Math.min(mn,ts); if(te) mx=Math.max(mx,te)
+        if(as) mn=Math.min(mn,as); if(ae) mx=Math.max(mx,ae)
+        
         ;(il.subtasks||[]).forEach(st=>{
-          if(st.startDate) mn=Math.min(mn,msOf(st.startDate))
-          if(st.endDate)   mx=Math.max(mx,msOf(st.endDate))
-          if(st.targetStart) mn=Math.min(mn,msOf(st.targetStart))
-          if(st.targetEnd)   mx=Math.max(mx,msOf(st.targetEnd))
-          if(st.actualStart) mn=Math.min(mn,msOf(st.actualStart))
-          if(st.actualEnd)   mx=Math.max(mx,msOf(st.actualEnd))
+          const sis = msOf(st.startDate), sie = msOf(st.endDate)
+          const sts = msOf(st.targetStart), ste = msOf(st.targetEnd)
+          const sas = msOf(st.actualStart), sae = msOf(st.actualEnd)
+          if(sis) mn=Math.min(mn,sis); if(sie) mx=Math.max(mx,sie)
+          if(sts) mn=Math.min(mn,sts); if(ste) mx=Math.max(mx,ste)
+          if(sas) mn=Math.min(mn,sas); if(sae) mx=Math.max(mx,sae)
         })
       })
     })
