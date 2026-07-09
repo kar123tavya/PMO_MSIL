@@ -53,7 +53,13 @@ export default function Login() {
       <div className="login-left">
         <div className="login-form-wrap">
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:32 }}>
-            <div style={{ width:42, height:42, background:'linear-gradient(135deg,#1e40af,#7c3aed)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:'1.2rem' }}>S</div>
+            <div className="login-logo">
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/a/a3/Maruti_Suzuki_logo.svg" 
+                alt="Maruti Suzuki" 
+                style={{ height: '40px', width: 'auto', display: 'block' }} 
+              />
+            </div>
             <div>
               <div style={{ fontWeight:800, fontSize:'1rem' }}>Maruti Suzuki</div>
               <div style={{ fontSize:'.72rem', color:'var(--text-muted)' }}>Project Monitoring Tool</div>
@@ -101,7 +107,7 @@ export default function Login() {
 
       <div className="login-right">
         <h2>Project Monitoring Tool</h2>
-        <p>Centralized portfolio management for Maruti Suzuki's Digital &amp; IT Division.</p>
+        <p>Centralized portfolio management for Maruti Suzuki's QA Vertical.</p>
         <ul className="feature-list">
           <li>Real-time Live Sync across users</li>
           <li>Flagship Project Tracking</li>

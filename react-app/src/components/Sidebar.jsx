@@ -18,11 +18,11 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Brand */}
       <div className="sidebar-brand">
-        <div className="brand-icon">S</div>
-        <div className="brand-text">
-          <div className="brand-name">PMO Dashboard</div>
-          <div className="brand-sub">Maruti Suzuki · QA Vertical</div>
-        </div>
+        <img 
+          src="https://upload.wikimedia.org/wikipedia/commons/a/a3/Maruti_Suzuki_logo.svg" 
+          alt="Maruti Suzuki" 
+          style={{ height: '32px', width: 'auto', display: 'block' }} 
+        />
       </div>
 
       {/* Nav */}

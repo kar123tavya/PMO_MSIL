@@ -79,7 +79,7 @@ http://localhost:3000
 
 Regards,
 ${user?.name || 'PMO Team'}
-Digital & IT Division, Maruti Suzuki India Ltd.`
+QA Vertical, Maruti Suzuki India Ltd.`
     }
     setBody(defaultBody)
   }, [])
