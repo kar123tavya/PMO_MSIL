@@ -212,8 +212,10 @@ function generateExcelBuffer(db) {
   const rows     = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
   const projects = rows.map(rowToProject);
 
-  const customColsStr = db.prepare("SELECT value FROM settings WHERE key='custom_columns'").get()?.value || '[]';
-  const customCols = JSON.parse(customColsStr).filter(c => c.status === 'approved');
+  let customCols = [];
+  try {
+    customCols = db.prepare("SELECT * FROM custom_columns WHERE status='approved'").all();
+  } catch(e) {}
   
   const DYNAMIC_HEADERS = [...MASTER_HEADERS, ...customCols.map(c => c.label)];
 
@@ -362,8 +364,10 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
 
   if (rawRows.length < 2) throw new Error('File has no data rows (need at least a header + 1 row).');
 
-  const customColsStr = db.prepare("SELECT value FROM settings WHERE key='custom_columns'").get()?.value || '[]';
-  const customCols = JSON.parse(customColsStr).filter(c => c.status === 'approved');
+  let customCols = [];
+  try {
+    customCols = db.prepare("SELECT * FROM custom_columns WHERE status='approved'").all();
+  } catch(e) {}
 
   const currentColumnMap = { ...COLUMN_MAP };
   customCols.forEach(c => {

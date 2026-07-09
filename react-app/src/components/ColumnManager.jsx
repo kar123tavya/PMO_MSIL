@@ -15,7 +15,7 @@ export default function ColumnManager({ onClose }) {
   const [colType, setColType] = useState('text')
   const [views, setViews] = useState({ dashboard: true, flagship: true, gantt: false })
   
-  const isSM = user?.role === 'senior_manager' || user?.role === 'section_head'
+  const isSM = ['senior_manager', 'admin', 'section_head'].includes(user?.role)
 
   useEffect(() => {
     fetchColumns()

@@ -80,8 +80,8 @@ export default function Dashboard() {
   }, [showColMgr])
 
   const getUserDetails = (staffId) => {
-    const u = users.find(x => x.staff_no === staffId)
-    return u ? `${u.name} (${u.staff_no})` : staffId || '—'
+    const u = users.find(x => x.staffNo === staffId)
+    return u ? `${u.name} (${u.staffNo})` : staffId || '—'
   }
 
   function handleExport() {

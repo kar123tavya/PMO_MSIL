@@ -13,7 +13,7 @@ function setBroadcast(fn) { _broadcast = fn; }
 
 router.get('/columns', authMiddleware, (req, res) => {
   try {
-    const isSM = req.user.role === 'senior_manager' || req.user.role === 'section_head';
+    const isSM = ['senior_manager', 'admin', 'section_head'].includes(req.user.role);
     let cols;
     if (isSM) {
       cols = db.prepare("SELECT * FROM custom_columns ORDER BY created_at ASC").all();
@@ -30,7 +30,7 @@ router.get('/columns', authMiddleware, (req, res) => {
 router.post('/columns', authMiddleware, (req, res) => {
   try {
     const { id, label, type, views } = req.body;
-    const isSM = req.user.role === 'senior_manager' || req.user.role === 'section_head';
+    const isSM = ['senior_manager', 'admin', 'section_head'].includes(req.user.role);
     const status = isSM ? 'approved' : 'pending';
     const now = new Date().toISOString();
 
@@ -50,7 +50,7 @@ router.post('/columns', authMiddleware, (req, res) => {
 });
 
 router.put('/columns/:id/approve', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager' && req.user.role !== 'section_head')
+  if (!['senior_manager', 'admin', 'section_head'].includes(req.user.role))
     return res.status(403).json({ error: 'Unauthorized' });
   try {
     db.prepare("UPDATE custom_columns SET status='approved' WHERE id=?").run(req.params.id);
@@ -62,7 +62,7 @@ router.put('/columns/:id/approve', authMiddleware, (req, res) => {
 });
 
 router.delete('/columns/:id', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager' && req.user.role !== 'section_head')
+  if (!['senior_manager', 'admin', 'section_head'].includes(req.user.role))
     return res.status(403).json({ error: 'Unauthorized' });
   try {
     db.prepare("DELETE FROM custom_columns WHERE id=?").run(req.params.id);
@@ -76,7 +76,7 @@ router.delete('/columns/:id', authMiddleware, (req, res) => {
 /* ──────────────── GENERIC SETTINGS ──────────────── */
 
 router.post('/phases/add_subtask', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager' && req.user.role !== 'section_head')
+  if (!['senior_manager', 'admin', 'section_head'].includes(req.user.role))
     return res.status(403).json({ error: 'Unauthorized' });
   
   const { phaseId, taskName } = req.body;
@@ -111,7 +111,7 @@ router.get('/:key', authMiddleware, (req, res) => {
 
 /* POST /api/settings/:key */
 router.post('/:key', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager')
+  if (!['senior_manager', 'admin'].includes(req.user.role))
     return res.status(403).json({ error: 'Only Senior Managers can change settings.' });
 
   const { value } = req.body;
