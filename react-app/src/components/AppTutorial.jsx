@@ -1,102 +1,175 @@
 import React, { useState, useEffect } from 'react';
-import { Joyride, STATUS } from 'react-joyride';
+import { Joyride, STATUS, EVENTS, ACTIONS } from 'react-joyride';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function AppTutorial() {
   const { user } = useAuth();
   const [run, setRun] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const handleStart = () => setRun(true);
+    const handleStart = () => {
+      // Force navigation to dashboard on start
+      if (window.location.pathname !== '/') {
+        navigate('/');
+      }
+      setStepIndex(0);
+      setTimeout(() => setRun(true), 400); // Give time for transition
+    };
     window.addEventListener('start-tutorial', handleStart);
     return () => window.removeEventListener('start-tutorial', handleStart);
-  }, []);
+  }, [navigate]);
 
   const steps = [
+    // 0
     {
       target: 'body',
       content: 'Welcome to the PMO Dashboard Tutorial! Let\'s take a comprehensive tour of the platform.',
       placement: 'center',
       disableBeacon: true,
     },
+    // 1
     {
       target: '.sidebar-nav',
       content: 'This is the main Navigation Menu. You can switch between different views of the PMO data from here.',
       placement: 'right',
     },
-    {
-      target: 'a[href="/"]',
-      content: 'The Dashboard (where we are now) is your central hub for KPIs and project tables.',
-      placement: 'right',
-    },
+    // 2
     {
       target: 'a[href="/flagship"]',
-      content: 'Flagship Projects: Click here to visually track critical high-priority projects and their live IL phases.',
+      content: 'Let\'s check out Flagship Projects. We will navigate there now to see how you can track critical milestones.',
       placement: 'right',
     },
+    // 3 - Flagship View
+    {
+      target: 'body',
+      content: 'This is the Flagship Projects view! You can visually track high-priority projects through their IL lifecycle here. Click any project card here to edit or update phases.',
+      placement: 'center',
+    },
+    // 4
     {
       target: 'a[href="/gantt"]',
-      content: 'Gantt Chart: Click here to see a beautiful timeline view mapping out start and end dates of all active projects.',
+      content: 'Now, let\'s head over to the Gantt Chart to see project timelines!',
       placement: 'right',
     },
+    // 5 - Gantt View
     {
-      target: 'a[href="/audit"]',
-      content: 'Audit Log: A comprehensive history of all edits, approvals, and system changes for transparency.',
+      target: 'body',
+      content: 'The Gantt Chart provides a graphical timeline of all active projects, comparing target dates against actual progress. Double-click a bar to edit its details.',
+      placement: 'center',
+    },
+    // 6
+    {
+      target: 'a[href="/"]',
+      content: 'Let\'s head back to the main Dashboard to explore the management tools.',
       placement: 'right',
     },
+    // 7 - Dashboard View
     {
       target: '.search-box',
       content: 'Use this Global Search to instantly find projects by their name, theme, or code.',
       placement: 'bottom',
     },
+    // 8
     {
       target: '.kpi-row',
-      content: 'These KPI cards provide a real-time summary of the current filtered projects, calculating man-days, defects, and cost savings.',
+      content: 'These KPI cards provide a real-time summary of the currently filtered projects.',
       placement: 'bottom',
     },
+    // 9
     {
       target: '#tour-filters',
       content: 'Filter your view by Division, Category, Financial Year, or check the boxes to isolate Flagship or Critical projects.',
       placement: 'top',
     },
+    // 10
     {
       target: '#tour-table',
-      content: 'This is the Master Project Table. You can click on any Project Name in this list to edit its details or update its phase targets.',
+      content: 'This is the Master Project Table. You can click on any Project Name in this list to edit its details, update its phases, or delete it.',
       placement: 'top',
     },
+    // 11
     {
       target: '#tour-add-project',
       content: 'Click "+ Add Project" to manually create a new project in the system.',
       placement: 'bottom',
     },
+    // 12
     {
       target: '#tour-import',
       content: 'Need to add many projects at once? Use the Import button to upload an Excel file and bulk-create projects.',
       placement: 'bottom',
     },
+    // 13
     {
       target: '#tour-export',
       content: 'Export your current filtered view (or all data) to a pristine Excel file with a single click.',
       placement: 'bottom',
     },
+    // 14
     {
       target: '.header-right',
-      content: 'Keep an eye on the Notification Bell for approval requests and edits, and the Tasks List for your upcoming deadlines.',
+      content: 'Keep an eye on the Notification Bell for approval requests and edits, and the Tasks List for your upcoming deadlines. Enjoy!',
       placement: 'left',
-    },
-    {
-      target: '.sidebar-footer',
-      content: 'You can check your current user role or log out from here. Enjoy using the PMO Dashboard!',
-      placement: 'right',
     }
   ];
 
   const handleJoyrideCallback = (data) => {
-    const { status, type } = data;
+    const { action, index, status, type } = data;
+
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
       setRun(false);
+      setStepIndex(0);
+      return;
+    }
+
+    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
+      // Determine direction
+      const nextStepIndex = index + (action === ACTIONS.PREV ? -1 : 1);
+      
+      // Step 3 requires being on /flagship
+      if (nextStepIndex === 3 && location.pathname !== '/flagship') {
+        setRun(false);
+        navigate('/flagship');
+        setTimeout(() => { setStepIndex(nextStepIndex); setRun(true); }, 600);
+        return;
+      }
+      
+      // Step 5 requires being on /gantt
+      if (nextStepIndex === 5 && location.pathname !== '/gantt') {
+        setRun(false);
+        navigate('/gantt');
+        setTimeout(() => { setStepIndex(nextStepIndex); setRun(true); }, 600);
+        return;
+      }
+
+      // Step 7+ requires being on /
+      if (nextStepIndex >= 7 && location.pathname !== '/') {
+        setRun(false);
+        navigate('/');
+        setTimeout(() => { setStepIndex(nextStepIndex); setRun(true); }, 600);
+        return;
+      }
+      
+      // Moving backwards handling
+      if (nextStepIndex === 2 && location.pathname !== '/') {
+        setRun(false);
+        navigate('/');
+        setTimeout(() => { setStepIndex(nextStepIndex); setRun(true); }, 600);
+        return;
+      }
+      
+      if (nextStepIndex === 4 && location.pathname !== '/flagship') {
+        setRun(false);
+        navigate('/flagship');
+        setTimeout(() => { setStepIndex(nextStepIndex); setRun(true); }, 600);
+        return;
+      }
+
+      setStepIndex(nextStepIndex);
     }
   };
 
@@ -106,6 +179,7 @@ export default function AppTutorial() {
     <Joyride
       steps={steps}
       run={run}
+      stepIndex={stepIndex}
       continuous
       scrollToFirstStep
       showProgress

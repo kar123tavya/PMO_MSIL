@@ -71,9 +71,9 @@ export default function AIChatWidget() {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          width: '60px',
-          height: '60px',
-          borderRadius: '30px',
+          height: '56px',
+          padding: '0 24px',
+          borderRadius: '28px',
           backgroundColor: 'var(--primary)',
           color: 'white',
           border: 'none',
@@ -82,12 +82,17 @@ export default function AIChatWidget() {
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
+          gap: '12px',
           justifyContent: 'center',
           transition: 'transform 0.2s',
           transform: isOpen ? 'scale(0)' : 'scale(1)',
-          opacity: isOpen ? 0 : 1
+          opacity: isOpen ? 0 : 1,
+          fontFamily: 'inherit',
+          fontSize: '0.95rem',
+          fontWeight: 600
         }}
       >
+        <span>Hey {user?.name ? user.name.split(' ')[0] : 'there'}, How can I help you?</span>
         <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
