@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Header  from '../components/Header'
+import api from '../api/client'
 import { useProjects } from '../context/ProjectContext'
 import html2canvas from 'html2canvas'
 import { useToast } from '../context/ToastContext'
@@ -103,7 +104,7 @@ export default function Gantt() {
   const [customCols, setCustomCols] = useState([])
 
   useEffect(() => {
-    fetch('/api/settings/columns').then(r=>r.json()).then(data=>{
+    api.get('/settings/columns').then(({ data }) => {
       if (Array.isArray(data)) setCustomCols(data.filter(c => c.views.includes('gantt') && c.status === 'approved'))
     }).catch(console.error)
   }, [showColMgr])

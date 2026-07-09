@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import Sidebar    from '../components/Sidebar'
+import api        from '../api/client'
 import Header     from '../components/Header'
 import StatusPill from '../components/StatusPill'
 import ProjectForm from '../components/ProjectForm'
@@ -46,11 +47,11 @@ export default function Flagship() {
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    fetch('/api/settings/il_phases').then(r=>r.json()).then(data=>{
+    api.get('/settings/il_phases').then(({ data }) => {
       if (data.value && Array.isArray(data.value)) setGlobalPhases(data.value)
     }).catch(console.error)
 
-    fetch('/api/settings/columns').then(r=>r.json()).then(data=>{
+    api.get('/settings/columns').then(({ data }) => {
       if (Array.isArray(data)) setCustomCols(data.filter(c => c.views.includes('flagship') && c.status === 'approved'))
     }).catch(console.error)
   }, [showColMgr])

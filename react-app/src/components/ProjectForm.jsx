@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Modal from './Modal'
 import { useAuth } from '../context/AuthContext'
+import api from '../api/client'
 
 const DIVS  = ['Finance','Operations','IT','HR','Marketing','Sales','Legal & Compliance','Customer Service','Supply Chain','Strategy']
 const THEMES= ['Digital Transformation','Customer Experience','Operational Excellence','Regulatory Compliance','Infrastructure','Innovation','Risk Management','Data & Analytics']
@@ -97,7 +98,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
 
   const [users, setUsers] = useState([])
   useEffect(() => {
-    fetch('/api/users').then(r=>r.json()).then(data=>{
+    api.get('/users').then(({ data }) => {
       if (Array.isArray(data)) setUsers(data)
     }).catch(console.error)
   }, [])

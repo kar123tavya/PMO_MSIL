@@ -28,11 +28,11 @@ export function ProjectProvider({ children }) {
   const fetchSettings = useCallback(async () => {
     try {
       const [cols, phases] = await Promise.all([
-        api.get('/settings/custom_columns'),
+        api.get('/settings/columns'),
         api.get('/settings/il_phases'),
       ])
       setSettings({
-        customColumns: cols.data.value || [],
+        customColumns: Array.isArray(cols.data) ? cols.data : (cols.data.value || []),
         ilPhases: phases.data.value || [],
       })
     } catch (e) { console.error('Failed to fetch settings', e) }

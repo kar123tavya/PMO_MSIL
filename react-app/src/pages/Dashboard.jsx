@@ -11,6 +11,7 @@ import ColumnManager  from '../components/ColumnManager'
 import { useProjects }       from '../context/ProjectContext'
 import { useAuth }           from '../context/AuthContext'
 import { useToast }          from '../context/ToastContext'
+import api from '../api/client'
 
 const STATUS_OPTS = ['IL1','IL2','IL3','IL4','IL5','Live','On Hold','Cancelled']
 const IL_PHASES = [
@@ -70,11 +71,11 @@ export default function Dashboard() {
   const [users, setUsers] = useState([])
 
   useEffect(() => {
-    fetch('/api/users').then(r=>r.json()).then(data=>{
+    api.get('/users').then(({ data }) => {
       if (Array.isArray(data)) setUsers(data)
     }).catch(console.error)
     
-    fetch('/api/settings/columns').then(r=>r.json()).then(data=>{
+    api.get('/settings/columns').then(({ data }) => {
       if (Array.isArray(data)) setCustomCols(data.filter(c => c.views.includes('dashboard') && c.status === 'approved'))
     }).catch(console.error)
   }, [showColMgr])

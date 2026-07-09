@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Modal from './Modal'
+import api from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
@@ -23,8 +24,8 @@ export default function ColumnManager({ onClose }) {
 
   async function fetchColumns() {
     try {
-      const res = await fetch('/api/settings/columns')
-      if (res.ok) setColumns(await res.json())
+      const { data } = await api.get('/settings/columns')
+      setColumns(data)
     } catch (e) {
       console.error(e)
     } finally {
@@ -41,13 +42,7 @@ export default function ColumnManager({ onClose }) {
     const selectedViews = Object.keys(views).filter(k => views[k])
     
     try {
-      const res = await fetch('/api/settings/columns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, label, type: colType, views: selectedViews })
-      })
-      if (!res.ok) throw new Error('Failed to propose column')
-      const data = await res.json()
+      const { data } = await api.post('/settings/columns', { id, label, type: colType, views: selectedViews })
       showToast(data.status === 'approved' ? 'Column added!' : 'Column proposed for approval.', 'success')
       setLabel('')
       fetchColumns()
@@ -58,7 +53,7 @@ export default function ColumnManager({ onClose }) {
 
   async function handleApprove(id) {
     try {
-      await fetch(`/api/settings/columns/${id}/approve`, { method: 'PUT' })
+      await api.put(`/settings/columns/${id}/approve`)
       showToast('Column approved!', 'success')
       fetchColumns()
     } catch (e) { showToast(e.message, 'error') }

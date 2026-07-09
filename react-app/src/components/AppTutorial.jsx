@@ -33,46 +33,55 @@ export default function AppTutorial() {
       target: '#nav-flagship',
       content: 'You can navigate to Flagship Projects to visually track high-priority initiatives through their IL lifecycle.',
       placement: 'right',
+      disableBeacon: true,
     },
     {
       target: '#nav-gantt',
       content: 'Use the Gantt Chart to see a graphical timeline of all active projects.',
       placement: 'right',
+      disableBeacon: true,
     },
     {
       target: '#nav-audit',
       content: 'The Audit Log keeps a complete history of all project edits, status changes, and approvals.',
       placement: 'right',
+      disableBeacon: true,
     },
     {
       target: '.search-box',
       content: 'Use this Global Search to instantly find projects by their name, theme, or code.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '.kpi-row',
       content: 'These KPI cards provide a real-time summary of your current project landscape.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '#tour-filters',
       content: 'Filter your view by Division, Category, Financial Year, or check the boxes to isolate Flagship or Critical projects.',
       placement: 'top',
+      disableBeacon: true,
     },
     {
       target: '#tour-table',
       content: 'This is the Master Project Table. You can click on any Project Name in this list to edit its details, update its phases, or delete it.',
       placement: 'top',
+      disableBeacon: true,
     },
     {
       target: '#tour-add-project',
       content: 'Click "+ Add Project" to manually create a new project in the system.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '#tour-import',
       content: 'Need to add many projects at once? Use the Import button to upload an Excel file and bulk-create projects.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '#tour-export',
@@ -114,6 +123,7 @@ export default function AppTutorial() {
       scrollToFirstStep
       showProgress
       showSkipButton
+      hideCloseButton={false}
       callback={handleJoyrideCallback}
       styles={{
         options: {
