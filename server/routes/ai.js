@@ -40,15 +40,15 @@ Keep your answers concise, professional, and well-formatted.
 --- PMO Database Context ---
 ${JSON.stringify(pmoContext, null, 2)}`;
 
-    // Call xAI Grok API using native fetch
-    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    // Call Groq API using native fetch
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${grokApiKey}`
       },
       body: JSON.stringify({
-        model: 'grok-beta',
+        model: 'llama3-70b-8192',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
@@ -59,11 +59,11 @@ ${JSON.stringify(pmoContext, null, 2)}`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Grok API Error:', response.status, errorText);
+      console.error('Groq API Error:', response.status, errorText);
       if (response.status === 402) {
-         return res.status(402).json({ error: 'Grok API Error: Insufficient credits. Please add credits to your xAI account at console.x.ai.' });
+         return res.status(402).json({ error: 'Groq API Error: Insufficient credits. Please add credits to your account.' });
       }
-      return res.status(500).json({ error: `Grok API Error: ${response.statusText}` });
+      return res.status(500).json({ error: `Groq API Error: ${response.statusText}` });
     }
 
     const data = await response.json();

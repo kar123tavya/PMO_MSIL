@@ -8,6 +8,7 @@ import ColumnManager from '../components/ColumnManager'
 import { useProjects } from '../context/ProjectContext'
 import { useAuth }     from '../context/AuthContext'
 import { useToast }    from '../context/ToastContext'
+import html2canvas     from 'html2canvas'
 
 const IL_IDS = ['il1','il2','il3','il4','il5']
 const IL_LBL = [
@@ -42,6 +43,7 @@ export default function Flagship() {
   const [showColMgr, setShowColMgr] = useState(false)
   const [customCols, setCustomCols] = useState([])
   const [globalPhases, setGlobalPhases] = useState([])
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     fetch('/api/settings/il_phases').then(r=>r.json()).then(data=>{
@@ -138,6 +140,21 @@ export default function Flagship() {
     catch(e){ showToast(e.message||'Delete failed','error') }
   }
 
+  const handleExport = () => {
+    setExporting(true)
+    setTimeout(() => {
+      const el = document.getElementById('flagship-export-area')
+      if(!el){ setExporting(false); return }
+      html2canvas(el, { scale: 2 }).then(canvas => {
+        const link = document.createElement('a')
+        link.download = `Flagship_Snapshot.png`
+        link.href = canvas.toDataURL('image/png')
+        link.click()
+        setExporting(false)
+      })
+    }, 100)
+  }
+
   if (loading) return <div className="loading-screen">Loading…</div>
 
   return (
@@ -145,9 +162,12 @@ export default function Flagship() {
       <Sidebar/>
       <div className="app-main">
         <Header title="Flagship Projects" searchValue={search} onSearch={setSearch}>
+          <button className="btn btn-outline" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting...' : '📷 Export Snapshot'}
+          </button>
           <button className="btn btn-ghost" onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
         </Header>
-        <div className="page-content">
+        <div className="page-content" id="flagship-export-area" style={{ background: 'var(--bg-color)' }}>
           <div className="filter-bar" style={{display:'flex', gap:15, padding:'12px 16px', background:'var(--surface-2)', borderBottom:'1px solid var(--border)', alignItems:'center'}}>
             <div className="form-group" style={{marginBottom:0}}>
               <select value={filterTheme} onChange={e=>setFilterTheme(e.target.value)} style={{padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)'}}>
