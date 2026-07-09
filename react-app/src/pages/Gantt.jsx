@@ -111,6 +111,16 @@ export default function Gantt() {
 
   const sidebarRef = useRef(null)
   const ganttBodyRef = useRef(null)
+  const ganttXScrollRef = useRef(null)
+
+  useEffect(() => {
+    if (ganttXScrollRef.current && todayX > 0) {
+      const cw = ganttXScrollRef.current.clientWidth;
+      if (cw > 0) {
+        ganttXScrollRef.current.scrollLeft = todayX - (cw / 2);
+      }
+    }
+  }, [todayX])
 
   function handleScroll(e) {
     if (e.target === sidebarRef.current && ganttBodyRef.current) ganttBodyRef.current.scrollTop = sidebarRef.current.scrollTop
@@ -119,7 +129,6 @@ export default function Gantt() {
 
   const filtered = useMemo(()=>
     projects.filter(p=>
-      (p.il_phases||[]).some(il=>il.targetStart||il.targetEnd||il.actualStart||il.actualEnd||(il.subtasks||[]).some(st=>st.startDate||st.endDate)) &&
       (!search||(p.project||'').toLowerCase().includes(search.toLowerCase())) &&
       (!filterDiv||p.division === filterDiv) &&
       (!isolatedProjKey || p._key === isolatedProjKey)
@@ -315,7 +324,7 @@ export default function Gantt() {
           </div>
 
           {/* Gantt body */}
-          <div style={{flex:1,overflowX:'auto',position:'relative', display:'flex', flexDirection:'column'}}>
+          <div ref={ganttXScrollRef} style={{flex:1,overflowX:'auto',position:'relative', display:'flex', flexDirection:'column'}}>
             <div style={{minWidth:totalW}}>
               {/* Group header */}
               <div style={{display:'flex',height:28,position:'sticky',top:0,zIndex:10,background:'var(--surface-2)',borderBottom:'1px solid var(--border)'}}>
@@ -336,8 +345,8 @@ export default function Gantt() {
                 <div style={{position:'absolute', top:52, left:0, right:0, bottom:0, display:'flex', pointerEvents:'none', zIndex:0}}>
                   {cols.map((c,i) => <div key={i} style={{width:cw, borderRight:'1px solid var(--border-light)', flexShrink:0, background:c.isToday?'rgba(79,70,229,0.04)':''}} />)}
                   {todayX > 0 && (
-                    <div style={{position:'absolute', left:todayX, top:0, bottom:0, width:2, background:'var(--error)', zIndex:20}}>
-                      <div style={{position:'absolute', top:4, left:4, background:'var(--error)', color:'#fff', padding:'2px 6px', fontSize:'0.65rem', fontWeight:800, borderRadius:10, whiteSpace:'nowrap'}}>
+                    <div style={{position:'absolute', left:todayX, top:0, bottom:0, width:1, background:'var(--primary)', zIndex:20}}>
+                      <div style={{position:'absolute', top:4, left:4, background:'var(--primary)', color:'#fff', padding:'2px 6px', fontSize:'0.65rem', fontWeight:800, borderRadius:10, whiteSpace:'nowrap'}}>
                         TODAY
                       </div>
                     </div>
