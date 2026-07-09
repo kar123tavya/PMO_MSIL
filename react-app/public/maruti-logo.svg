@@ -1,0 +1,8 @@
+<svg viewBox="0 0 320 50" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#888888">
+    <path d="M22.5 4.5L34.5 13L25.5 19L38.5 29L26.5 38L14.5 29.5L23.5 23.5L10.5 13.5L22.5 4.5Z" />
+    <path d="M15 22L20.5 26.5L13.5 31.5L15 22Z" />
+    <path d="M30 18L24.5 13.5L31.5 8.5L30 18Z" />
+  </g>
+  <text x="48" y="34" font-family="Arial, sans-serif" font-weight="900" font-size="26" fill="#004F98" letter-spacing="1">MARUTI SUZUKI</text>
+</svg>

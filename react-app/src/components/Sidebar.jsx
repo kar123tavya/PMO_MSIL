@@ -19,7 +19,7 @@ export default function Sidebar() {
       {/* Brand */}
       <div className="sidebar-brand">
         <img 
-          src="https://upload.wikimedia.org/wikipedia/commons/a/a3/Maruti_Suzuki_logo.svg" 
+          src="/maruti-logo.svg" 
           alt="Maruti Suzuki" 
           style={{ height: '32px', width: 'auto', display: 'block' }} 
         />
@@ -50,11 +50,15 @@ export default function Sidebar() {
         )}
 
         <div className="divider" style={{ margin: '14px 0' }} />
-        <div className="nav-section-label">Info</div>
-        <div style={{ padding: '8px 12px', fontSize: '.7rem', color: 'rgba(255,255,255,.35)', lineHeight: 1.7 }}>
-          <div>🏢 QA Vertical</div>
-          <div>📅 {new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</div>
-        </div>
+        <div className="nav-section-label">Help</div>
+        <button 
+          onClick={() => window.dispatchEvent(new Event('start-tutorial'))}
+          className="nav-item" 
+          style={{ width: '100%', background: 'transparent', border: 'none', textAlign: 'left' }}
+        >
+          <span className="nav-icon">💡</span>
+          <span style={{ flex: 1 }}>Interactive Tutorial</span>
+        </button>
       </nav>
 
       {/* User footer */}

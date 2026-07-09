@@ -12,6 +12,7 @@ import Gantt     from './pages/Gantt'
 import AuditLog  from './pages/AuditLog'
 import Users     from './pages/Users'
 import AIChatWidget from './components/AIChatWidget'
+import AppTutorial from './components/AppTutorial'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
       <ToastProvider>
         <ProjectProvider>
           <NotificationProvider>
+            <AppTutorial />
             <Routes>
               <Route path="/login"    element={<Login />} />
               <Route path="/"         element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

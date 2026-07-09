@@ -55,7 +55,7 @@ export default function Login() {
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:32 }}>
             <div className="login-logo">
               <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/a/a3/Maruti_Suzuki_logo.svg" 
+                src="/maruti-logo.svg" 
                 alt="Maruti Suzuki" 
                 style={{ height: '40px', width: 'auto', display: 'block' }} 
               />
