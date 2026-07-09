@@ -19,7 +19,7 @@ export default function Sidebar() {
       {/* Brand */}
       <div className="sidebar-brand">
         <img 
-          src="/maruti-logo.svg" 
+          src="/maruti-logo.png" 
           alt="Maruti Suzuki" 
           style={{ height: '32px', width: 'auto', display: 'block' }} 
         />

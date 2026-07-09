@@ -55,9 +55,9 @@ export default function Login() {
           <div style={{ display:'flex', flexDirection: 'column', alignItems:'center', gap:12, marginBottom:32 }}>
             <div className="login-logo" style={{ marginBottom: 0 }}>
               <img 
-                src="/maruti-logo.svg" 
+                src="/maruti-logo.png" 
                 alt="Maruti Suzuki" 
-                style={{ height: '40px', width: 'auto', display: 'block' }} 
+                style={{ height: '50px', width: 'auto', display: 'block' }} 
               />
             </div>
             <div style={{ fontSize:'.85rem', color:'var(--text-muted)', fontWeight: 500 }}>Project Monitoring Tool</div>

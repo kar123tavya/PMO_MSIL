@@ -27,9 +27,9 @@ export default function AppTutorial() {
   const steps = [
     // 0
     {
-      target: '.app-shell',
+      target: '.sidebar-brand',
       content: 'Welcome to the PMO Dashboard Tutorial! Let\'s take a comprehensive tour of the platform.',
-      placement: 'center',
+      placement: 'right',
       disableBeacon: true,
     },
     // 1
@@ -46,9 +46,9 @@ export default function AppTutorial() {
     },
     // 3 - Flagship View
     {
-      target: '.app-shell',
+      target: '.page-title',
       content: 'This is the Flagship Projects view! You can visually track high-priority projects through their IL lifecycle here. Click any project card here to edit or update phases.',
-      placement: 'center',
+      placement: 'bottom',
     },
     // 4
     {
@@ -58,9 +58,9 @@ export default function AppTutorial() {
     },
     // 5 - Gantt View
     {
-      target: '.app-shell',
+      target: '.page-title',
       content: 'The Gantt Chart provides a graphical timeline of all active projects, comparing target dates against actual progress. Double-click a bar to edit its details.',
-      placement: 'center',
+      placement: 'bottom',
     },
     // 6
     {
