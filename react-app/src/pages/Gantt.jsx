@@ -137,29 +137,10 @@ export default function Gantt() {
   )
 
   const { cols, totalW, todayX } = useMemo(()=>{
-    let mn=Infinity, mx=-Infinity
-    filtered.forEach(p=>{
-      (p.il_phases||[]).forEach(il=>{
-        const is = msOf(il.startDate), ie = msOf(il.endDate)
-        const ts = msOf(il.targetStart), te = msOf(il.targetEnd)
-        const as = msOf(il.actualStart), ae = msOf(il.actualEnd)
-        if(is) mn=Math.min(mn,is); if(ie) mx=Math.max(mx,ie)
-        if(ts) mn=Math.min(mn,ts); if(te) mx=Math.max(mx,te)
-        if(as) mn=Math.min(mn,as); if(ae) mx=Math.max(mx,ae)
-        
-        ;(il.subtasks||[]).forEach(st=>{
-          const sis = msOf(st.startDate), sie = msOf(st.endDate)
-          const sts = msOf(st.targetStart), ste = msOf(st.targetEnd)
-          const sas = msOf(st.actualStart), sae = msOf(st.actualEnd)
-          if(sis) mn=Math.min(mn,sis); if(sie) mx=Math.max(mx,sie)
-          if(sts) mn=Math.min(mn,sts); if(ste) mx=Math.max(mx,ste)
-          if(sas) mn=Math.min(mn,sas); if(sae) mx=Math.max(mx,sae)
-        })
-      })
-    })
-    const now=Date.now()
-    if(mn===Infinity){ mn=now-30*86400000; mx=now+90*86400000 }
-    else { mn-=14*86400000; mx+=30*86400000 } // padding
+    // Hardcoded to 2020-2040 per user request
+    const mn = new Date('2020-01-01T00:00:00Z').getTime()
+    const mx = new Date('2040-12-31T23:59:59Z').getTime()
+    
     const step = MODES[viewMode].step
     const cs=buildCols(mn,mx,step)
     const cw = MODES[viewMode].cellW
