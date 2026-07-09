@@ -137,16 +137,16 @@ export default function Gantt() {
   )
 
   const { cols, totalW, todayX } = useMemo(()=>{
-    // Hardcoded to 2020-2040 per user request
-    const mn = new Date('2020-01-01T00:00:00Z').getTime()
-    const mx = new Date('2040-12-31T23:59:59Z').getTime()
-    
+    const now = new Date()
+    // 1 year before today to 3 years after today
+    const mn = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).getTime()
+    const mx = new Date(now.getFullYear() + 3, now.getMonth(), now.getDate()).getTime()
     const step = MODES[viewMode].step
-    const cs=buildCols(mn,mx,step)
+    const cs = buildCols(mn, mx, step)
     const cw = MODES[viewMode].cellW
     const tx = dateToX(new Date(), cs, cw)
-    return { cols:cs, totalW:cs.length*cw, todayX: tx }
-  },[filtered, viewMode])
+    return { cols: cs, totalW: cs.length * cw, todayX: tx }
+  }, [viewMode])
 
   const groups = useMemo(()=>{
     const g=[]
