@@ -85,16 +85,18 @@ export default function Login() {
                 <input className="login-input" type="email"    placeholder="Maruti Suzuki Email" value={rEmail} onChange={e=>setREmail(e.target.value)} required />
                 <input className="login-input" type="text"     placeholder="Full Name"           value={rName}  onChange={e=>setRName(e.target.value)}  required />
                 <input className="login-input" type="text"     placeholder="Staff Number"        value={rStaff} onChange={e=>setRStaff(e.target.value)} />
-                <select className="login-input" value={rDiv} onChange={e=>setRDiv(e.target.value)} required>
-                  <option value="">-- Select Division --</option>
-                  <option value="COP">COP</option>
-                  <option value="MA">MA</option>
-                  <option value="VQ">VQ</option>
-                  <option value="VU">VU</option>
-                  <option value="VI">VI</option>
-                  <option value="MQ">MQ</option>
-                  <option value="PDS">PDS</option>
-                </select>
+                {rRole === 'pic' && (
+                  <select className="login-input" value={rDiv} onChange={e=>setRDiv(e.target.value)} required>
+                    <option value="">-- Select Division --</option>
+                    <option value="COP">COP</option>
+                    <option value="MA">MA</option>
+                    <option value="VQ">VQ</option>
+                    <option value="VU">VU</option>
+                    <option value="VI">VI</option>
+                    <option value="MQ">MQ</option>
+                    <option value="PDS">PDS</option>
+                  </select>
+                )}
                 <select className="login-input" value={rRole} onChange={e=>setRRole(e.target.value)}>
                   <option value="viewer">Viewer</option>
                   <option value="pic">Person In Charge (PIC)</option>
