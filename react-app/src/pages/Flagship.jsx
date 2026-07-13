@@ -214,7 +214,6 @@ export default function Flagship() {
                   <th style={{width:200, background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)'}}>Project</th>
                   <th style={{width:130, background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)'}}>Division</th>
                   <th style={{background:'#1e3a8a', color:'#fff', width:110, borderRight:'1px solid rgba(255,255,255,0.2)', textAlign:'center'}}>3rd Party Req</th>
-                  <th style={{background:'#1e3a8a', color:'#fff', width:90, borderRight:'1px solid rgba(255,255,255,0.2)', textAlign:'center'}}>% Done</th>
                   {customCols.map(c=><th key={c.id} style={{background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)'}}>{c.label}</th>)}
                   {IL_LBL.map(l=><th key={l} style={{width:130,textAlign:'center', background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)'}}>{l==='UAT (+ Cybersecurity)' ? 'UAT (+Cybersecurity)' : l}</th>)}
                   <th style={{width:150, background:'#1e3a8a', color:'#fff'}}>Status<br/><small>(As on date)</small></th>
@@ -222,7 +221,7 @@ export default function Flagship() {
               </thead>
               <tbody>
                 {flagships.length===0&&(
-                  <tr><td colSpan={5 + customCols.length + IL_LBL.length} className="no-data">No flagship projects found.</td></tr>
+                  <tr><td colSpan={4 + customCols.length + IL_LBL.length} className="no-data">No flagship projects found.</td></tr>
                 )}
                 {flagships.map((p, idx) => (
                   <tr key={p._key} className={idx % 2 === 0 ? "row-even" : "row-odd"} style={{background: '#fff', borderBottom: '1px solid var(--border)'}}>
@@ -247,9 +246,6 @@ export default function Flagship() {
                     </td>
                     <td style={{textAlign:'center', borderRight:'1px solid var(--border)', verticalAlign:'middle'}}>
                       {p.thirdParty ? <span style={{color:'var(--green)', fontWeight:'bold', fontSize:'1.1rem'}}>✓</span> : <span style={{color:'var(--red)', fontWeight:'bold', fontSize:'1.1rem'}}>✕</span>}
-                    </td>
-                    <td style={{textAlign:'center', borderRight:'1px solid var(--border)', verticalAlign:'middle'}}>
-                      <div style={{fontWeight:'bold', color:'var(--primary)', fontSize:'1rem'}}>{calculateProjectProgress(p)}%</div>
                     </td>
                     {customCols.map(c=><td key={c.id} style={{borderRight:'1px solid var(--border)', verticalAlign:'middle'}}>{(p.customData||{})[c.id]||'—'}</td>)}
                     
