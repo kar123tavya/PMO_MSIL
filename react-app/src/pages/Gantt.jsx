@@ -13,6 +13,7 @@ const IL_BGS    = ['#ede9fe','#e0f2fe','#dcfce7','#fef9c3','#fee2e2']
 const ROW_H_PH  = 44
 const ROW_H_ST  = 38
 const ROW_H_PRJ = 34
+const LABEL_W   = 260
 
 const MODES = {
   weekly:    { cellW: 36, step: 'week' },
@@ -94,20 +95,13 @@ export default function Gantt() {
   const [showColMgr,   setShowColMgr]   = useState(false)
   const [customCols,   setCustomCols]   = useState([])
 
-  const sidebarRef    = useRef(null)
-  const ganttBodyRef  = useRef(null)
-  const ganttXScrollRef = useRef(null)
+  const ganttScrollRef = useRef(null)
 
   useEffect(() => {
     api.get('/settings/columns').then(({ data }) => {
       if (Array.isArray(data)) setCustomCols(data.filter(c => c.views.includes('gantt') && c.status === 'approved'))
     }).catch(console.error)
   }, [showColMgr])
-
-  function handleScroll(e) {
-    if (e.target === sidebarRef.current && ganttBodyRef.current) ganttBodyRef.current.scrollTop = sidebarRef.current.scrollTop
-    else if (e.target === ganttBodyRef.current && sidebarRef.current) sidebarRef.current.scrollTop = ganttBodyRef.current.scrollTop
-  }
 
   const filtered = useMemo(() =>
     projects.filter(p =>
@@ -130,11 +124,12 @@ export default function Gantt() {
     return { cols: cs, totalW: cs.length * cellW, todayX: tx, cw: cellW }
   }, [viewMode])
 
-  // Scroll to today on load / viewMode change
+  // Scroll to today on load / viewMode change — center the view on today
   useEffect(() => {
-    if (ganttXScrollRef.current && todayX > 0) {
-      const containerW = ganttXScrollRef.current.clientWidth
-      ganttXScrollRef.current.scrollLeft = Math.max(0, todayX - containerW / 2)
+    if (ganttScrollRef.current && todayX > 0) {
+      const containerW = ganttScrollRef.current.clientWidth
+      // Subtract LABEL_W because the label column is inside the same scroll container
+      ganttScrollRef.current.scrollLeft = Math.max(0, todayX - (containerW - LABEL_W) / 2)
     }
   }, [todayX, cols])
 
@@ -216,124 +211,222 @@ export default function Gantt() {
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
+          <input
+            type="text"
+            placeholder="🔍 Search projects..."
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            style={{padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',fontSize:'0.8rem',width:200}}
+          />
           <button className="btn btn-primary" style={{padding:'4px 12px',height:32,fontSize:'0.8rem'}} onClick={()=>setShowExportModal(true)}>📷 Export Snapshot</button>
           <button className="btn btn-outline" style={{padding:'4px 12px',height:32,fontSize:'0.8rem'}} onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
           <span style={{marginLeft:'auto',fontSize:'0.75rem',color:'var(--text-muted)'}}>{filtered.length} project{filtered.length!==1?'s':''}</span>
         </div>
 
-        <div id="gantt-full-view" style={{display:'flex',height:'calc(100vh - 60px - 49px)',overflow:'hidden'}}>
-          {/* Left labels */}
-          <div ref={sidebarRef} onScroll={handleScroll} style={{width:260,flexShrink:0,borderRight:'1px solid var(--border)',overflowY:'auto',background:'var(--surface)',overflowX:'hidden'}}>
-            {/* Search box in sidebar */}
-            <div style={{padding:'8px 10px',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',position:'sticky',top:0,zIndex:6}}>
-              <input
-                type="text"
-                placeholder="🔍 Search projects..."
-                value={search}
-                onChange={e=>setSearch(e.target.value)}
-                style={{width:'100%',padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',fontSize:'0.78rem',background:'var(--bg-color)',color:'var(--text)',boxSizing:'border-box'}}
-              />
-            </div>
-            <div style={{height:34,display:'flex',alignItems:'center',padding:'0 12px',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',fontWeight:700,fontSize:'.72rem',color:'var(--text-muted)',textTransform:'uppercase',position:'sticky',top:46,zIndex:5}}>Project / Phase</div>
-            {filtered.map(p=>(
-              <div key={p._key}>
-                <div style={{padding:'0 10px',fontWeight:700,fontSize:'.78rem',color:'var(--primary)',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',height:ROW_H_PRJ,display:'flex',alignItems:'center',overflow:'hidden'}}>
-                  <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.project}</span>
-                </div>
-                {(p.il_phases||[]).map((il,idx)=>(
-                  <React.Fragment key={il.id}>
-                    <div onClick={()=>togglePhase(p._key,il.id)} style={{height:ROW_H_PH,display:'flex',alignItems:'center',padding:'0 8px 0 18px',gap:6,background:IL_BGS[idx]+'66',borderBottom:'1px solid var(--border)',cursor:'pointer',fontSize:'.72rem',fontWeight:600,color:IL_COLORS[idx],overflow:'hidden'}}>
-                      <span style={{fontSize:'.6rem',flexShrink:0}}>{expanded[p._key+'_'+il.id]?'▼':'▶'}</span>
-                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{il.label}</span>
+        {/*
+          Single horizontally-scrollable container.
+          The project name column uses position:sticky; left:0 so it stays pinned
+          while the user scrolls left/right through the Gantt timeline.
+        */}
+        <div
+          id="gantt-full-view"
+          ref={ganttScrollRef}
+          style={{
+            overflowX: 'auto',
+            overflowY: 'auto',
+            height: 'calc(100vh - 60px - 49px - 49px)',
+            position: 'relative',
+          }}
+        >
+          {/* The inner content is as wide as (label column + all timeline columns) */}
+          <div style={{minWidth: LABEL_W + totalW, position: 'relative'}}>
+
+            {/* ───────── Sticky header row ───────── */}
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 30,
+              display: 'flex',
+              background: 'var(--surface-2)',
+              borderBottom: '2px solid var(--border)',
+            }}>
+              {/* Top-left corner — pinned label header */}
+              <div style={{
+                width: LABEL_W,
+                flexShrink: 0,
+                position: 'sticky',
+                left: 0,
+                zIndex: 40,
+                background: '#1e3a8a',
+                color: '#fff',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                borderRight: '2px solid rgba(255,255,255,0.3)',
+              }}>
+                <div style={{height:28, display:'flex',alignItems:'center',padding:'0 12px',fontSize:'.7rem',fontWeight:700,color:'rgba(255,255,255,0.7)',borderBottom:'1px solid rgba(255,255,255,0.2)'}}>YEAR</div>
+                <div style={{height:24, display:'flex',alignItems:'center',padding:'0 12px',fontSize:'.68rem',fontWeight:800,color:'#fff'}}>PROJECT / PHASE</div>
+              </div>
+
+              {/* Timeline header columns (year groups + month/week labels) */}
+              <div style={{flex:1, display:'flex', flexDirection:'column'}}>
+                {/* Year group labels */}
+                <div style={{display:'flex',height:28}}>
+                  {groups.map((g,i)=>(
+                    <div key={i} style={{width:g.span*cw,flexShrink:0,borderRight:'1px solid var(--border)',padding:'5px 6px',fontSize:'.62rem',fontWeight:700,color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden'}}>
+                      {g.label}
                     </div>
-                    {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si)=>(
-                      <div key={si} style={{height:ROW_H_ST,display:'flex',alignItems:'center',padding:'0 6px 0 32px',background:IL_BGS[idx]+'22',borderBottom:'1px solid var(--border)',fontSize:'.68rem',color:st.done?'var(--text-light)':'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:st.done?'line-through':'none'}}>
-                        {st.label||st}
-                      </div>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </div>
-            ))}
-            {filtered.length===0&&<div className="no-data">No projects found.</div>}
-            <div style={{height:100}}/>
-          </div>
-
-          {/* Gantt bars area */}
-          <div ref={ganttXScrollRef} style={{flex:1,overflowX:'auto',position:'relative',display:'flex',flexDirection:'column'}}>
-            <div style={{minWidth:totalW}}>
-              {/* Year/Quarter group header */}
-              <div style={{display:'flex',height:28,position:'sticky',top:0,zIndex:10,background:'var(--surface-2)',borderBottom:'1px solid var(--border)'}}>
-                {groups.map((g,i)=>(
-                  <div key={i} style={{width:g.span*cw,borderRight:'1px solid var(--border)',padding:'5px 6px',fontSize:'.62rem',fontWeight:700,color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',flexShrink:0}}>{g.label}</div>
-                ))}
-              </div>
-              {/* Column header */}
-              <div style={{display:'flex',height:24,position:'sticky',top:28,zIndex:10,background:'var(--surface-2)',borderBottom:'2px solid var(--border)'}}>
-                {cols.map((c,i)=>(
-                  <div key={i} style={{width:cw,height:'100%',textAlign:'center',fontSize:'.58rem',color:'var(--text-light)',fontWeight:400,flexShrink:0,borderRight:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center'}}>{c.label}</div>
-                ))}
-              </div>
-
-              {/* Scrollable rows */}
-              <div ref={ganttBodyRef} onScroll={handleScroll} style={{overflowY:'auto',height:'calc(100vh - 60px - 49px - 52px)',position:'relative'}}>
-                {/* Grid background + today line */}
-                <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,display:'flex',pointerEvents:'none',zIndex:0}}>
-                  {cols.map((c,i)=>(
-                    <div key={i} style={{width:cw,borderRight:'1px solid var(--border-light)',flexShrink:0}}/>
                   ))}
                 </div>
-                {todayX > 0 && (
-                  <div style={{position:'absolute',left:todayX,top:0,bottom:0,width:2,background:'#3b82f6',zIndex:20,pointerEvents:'none'}}>
-                    <div style={{position:'absolute',top:4,left:4,background:'#3b82f6',color:'#fff',padding:'2px 6px',fontSize:'0.62rem',fontWeight:800,borderRadius:10,whiteSpace:'nowrap'}}>TODAY</div>
-                  </div>
-                )}
+                {/* Month / week col labels */}
+                <div style={{display:'flex',height:24}}>
+                  {cols.map((c,i)=>(
+                    <div key={i} style={{width:cw,height:'100%',textAlign:'center',fontSize:'.58rem',color:'var(--text-light)',fontWeight:400,flexShrink:0,borderRight:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      {c.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-                {/* Project rows */}
-                <div style={{position:'relative',zIndex:1}}>
-                  {filtered.map(p=>{
-                    let targetStart = null
-                    ;(p.il_phases||[]).forEach(il=>{
-                      if (il.startDate && (!targetStart || il.startDate < targetStart)) targetStart = il.startDate
-                    })
-                    return (
-                      <div key={p._key} id={`gantt-proj-${p._key}`}>
-                        <div style={{position:'relative',height:ROW_H_PRJ,borderBottom:'1px solid var(--border)',background:'var(--surface-2)'}}>
-                          {targetStart && p.liveTarget && bar(targetStart, p.liveTarget, 0, 16, false, true, p.project, '50%')}
+            {/* ───────── Project rows ───────── */}
+            {filtered.length === 0 && (
+              <div className="no-data" style={{paddingLeft: LABEL_W + 20}}>No projects found.</div>
+            )}
+
+            {filtered.map(p => {
+              let targetStart = null
+              ;(p.il_phases||[]).forEach(il => {
+                if (il.startDate && (!targetStart || il.startDate < targetStart)) targetStart = il.startDate
+              })
+
+              return (
+                <div key={p._key} id={`gantt-proj-${p._key}`}>
+                  {/* ── Project-level row ── */}
+                  <div style={{display:'flex', borderBottom:'1px solid var(--border)'}}>
+                    {/* Pinned label */}
+                    <div style={{
+                      width: LABEL_W,
+                      flexShrink: 0,
+                      position: 'sticky',
+                      left: 0,
+                      zIndex: 20,
+                      background: 'var(--surface-2)',
+                      borderRight: '2px solid var(--border)',
+                      height: ROW_H_PRJ,
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '0 10px',
+                      overflow: 'hidden',
+                    }}>
+                      <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:700,fontSize:'.78rem',color:'var(--primary)'}} title={p.project}>{p.project}</span>
+                    </div>
+                    {/* Bar area */}
+                    <div style={{flex:1, position:'relative', height:ROW_H_PRJ, minWidth: totalW}}>
+                      {/* grid lines */}
+                      <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,display:'flex',pointerEvents:'none'}}>
+                        {cols.map((_,i)=><div key={i} style={{width:cw,flexShrink:0,borderRight:'1px solid var(--border-light)'}}/>)}
+                      </div>
+                      {/* Today line */}
+                      {todayX > 0 && (
+                        <div style={{position:'absolute',left:todayX,top:0,bottom:0,width:2,background:'#3b82f6',zIndex:10,pointerEvents:'none'}}>
+                          <div style={{position:'absolute',top:2,left:3,background:'#3b82f6',color:'#fff',padding:'1px 4px',fontSize:'0.55rem',fontWeight:800,borderRadius:6,whiteSpace:'nowrap'}}>TODAY</div>
                         </div>
-                        {(p.il_phases||[]).map((il,idx)=>{
-                          const tStart = il.targetStart || il.startDate
-                          const tEnd   = il.targetEnd   || il.startDate
-                          const aStart = il.actualStart  || il.endDate
-                          const aEnd   = il.actualEnd    || il.endDate
+                      )}
+                      {targetStart && p.liveTarget && bar(targetStart, p.liveTarget, 0, 16, false, true, p.project, '50%')}
+                    </div>
+                  </div>
+
+                  {/* ── IL Phase rows ── */}
+                  {(p.il_phases||[]).map((il,idx) => {
+                    const tStart = il.targetStart || il.startDate
+                    const tEnd   = il.targetEnd   || il.startDate
+                    const aStart = il.actualStart  || il.endDate
+                    const aEnd   = il.actualEnd    || il.endDate
+                    return (
+                      <React.Fragment key={il.id}>
+                        <div style={{display:'flex', borderBottom:'1px solid var(--border)'}}>
+                          {/* Pinned phase label */}
+                          <div onClick={()=>togglePhase(p._key,il.id)} style={{
+                            width: LABEL_W,
+                            flexShrink: 0,
+                            position: 'sticky',
+                            left: 0,
+                            zIndex: 20,
+                            background: IL_BGS[idx]+'aa',
+                            borderRight: '2px solid '+IL_COLORS[idx]+'55',
+                            height: ROW_H_PH,
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '0 8px 0 18px',
+                            gap: 6,
+                            cursor: 'pointer',
+                            fontSize: '.72rem',
+                            fontWeight: 600,
+                            color: IL_COLORS[idx],
+                            overflow: 'hidden',
+                          }}>
+                            <span style={{fontSize:'.6rem',flexShrink:0}}>{expanded[p._key+'_'+il.id]?'▼':'▶'}</span>
+                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{il.label}</span>
+                          </div>
+                          {/* Bar area */}
+                          <div style={{flex:1, position:'relative', height:ROW_H_PH, minWidth: totalW, background: IL_BGS[idx]+'22', cursor:'pointer'}} onClick={()=>togglePhase(p._key,il.id)}>
+                            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,display:'flex',pointerEvents:'none'}}>
+                              {cols.map((_,i)=><div key={i} style={{width:cw,flexShrink:0,borderRight:'1px solid var(--border-light)'}}/>)}
+                            </div>
+                            {todayX > 0 && <div style={{position:'absolute',left:todayX,top:0,bottom:0,width:2,background:'#3b82f688',zIndex:10,pointerEvents:'none'}}/>}
+                            {tStart&&tEnd&&bar(tStart,tEnd,idx,10,false,true,`${p.project} - ${il.label}`,'30%')}
+                            {aStart&&aEnd&&bar(aStart,aEnd,idx,10,(il.subtasks||[]).every(s=>s.done)&&(il.subtasks||[]).length>0,false,`${p.project} - ${il.label}`,'70%')}
+                          </div>
+                        </div>
+
+                        {/* Subtask rows */}
+                        {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si) => {
+                          const stTStart = st.targetStart || st.startDate
+                          const stTEnd   = st.targetEnd   || st.endDate
+                          const stAStart = st.actualStart || (st.done ? st.startDate : null)
+                          const stAEnd   = st.actualEnd   || (st.done ? st.endDate   : null)
                           return (
-                            <React.Fragment key={il.id}>
-                              <div onClick={()=>togglePhase(p._key,il.id)} style={{position:'relative',height:ROW_H_PH,borderBottom:'1px solid var(--border)',background:IL_BGS[idx]+'44',cursor:'pointer'}}>
-                                {tStart&&tEnd&&bar(tStart,tEnd,idx,10,false,true,`${p.project} - ${il.label}`,'30%')}
-                                {aStart&&aEnd&&bar(aStart,aEnd,idx,10,(il.subtasks||[]).every(s=>s.done)&&(il.subtasks||[]).length>0,false,`${p.project} - ${il.label}`,'70%')}
+                            <div key={si} style={{display:'flex', borderBottom:'1px solid var(--border)'}}>
+                              {/* Pinned subtask label */}
+                              <div style={{
+                                width: LABEL_W,
+                                flexShrink: 0,
+                                position: 'sticky',
+                                left: 0,
+                                zIndex: 20,
+                                background: IL_BGS[idx]+'55',
+                                borderRight: '1px solid '+IL_COLORS[idx]+'33',
+                                height: ROW_H_ST,
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '0 6px 0 32px',
+                                fontSize: '.68rem',
+                                color: st.done ? 'var(--text-light)' : 'var(--text-muted)',
+                                overflow: 'hidden',
+                                textDecoration: st.done ? 'line-through' : 'none',
+                              }}>
+                                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{st.label||st}</span>
                               </div>
-                              {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si)=>{
-                                const stTStart = st.targetStart || st.startDate
-                                const stTEnd   = st.targetEnd   || st.endDate
-                                const stAStart = st.actualStart || (st.done ? st.startDate : null)
-                                const stAEnd   = st.actualEnd   || (st.done ? st.endDate   : null)
-                                return (
-                                  <div key={si} style={{position:'relative',height:ROW_H_ST,borderBottom:'1px solid var(--border)',background:IL_BGS[idx]+'22'}}>
-                                    {stTStart&&stTEnd&&bar(stTStart,stTEnd,idx,8,false,true,`${p.project} - ${st.label||st}`,'30%')}
-                                    {stAStart&&stAEnd&&bar(stAStart,stAEnd,idx,8,st.done,false,`${p.project} - ${st.label||st}`,'70%')}
-                                  </div>
-                                )
-                              })}
-                            </React.Fragment>
+                              {/* Bar area */}
+                              <div style={{flex:1, position:'relative', height:ROW_H_ST, minWidth: totalW, background: IL_BGS[idx]+'11'}}>
+                                <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,display:'flex',pointerEvents:'none'}}>
+                                  {cols.map((_,i)=><div key={i} style={{width:cw,flexShrink:0,borderRight:'1px solid var(--border-light)'}}/>)}
+                                </div>
+                                {todayX > 0 && <div style={{position:'absolute',left:todayX,top:0,bottom:0,width:2,background:'#3b82f644',zIndex:10,pointerEvents:'none'}}/>}
+                                {stTStart&&stTEnd&&bar(stTStart,stTEnd,idx,8,false,true,`${p.project} - ${st.label||st}`,'30%')}
+                                {stAStart&&stAEnd&&bar(stAStart,stAEnd,idx,8,st.done,false,`${p.project} - ${st.label||st}`,'70%')}
+                              </div>
+                            </div>
                           )
                         })}
-                      </div>
+                      </React.Fragment>
                     )
                   })}
                 </div>
-                <div style={{height:100}}/>
-              </div>
-            </div>
+              )
+            })}
+            <div style={{height:80}}/>
           </div>
         </div>
       </div>
