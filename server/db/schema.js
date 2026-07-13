@@ -97,12 +97,22 @@ function initSchema() {
       phases           TEXT DEFAULT '{}',
       custom_data      TEXT DEFAULT '{}',
       assigned_to      TEXT,
+      assigned_staff_id TEXT,
+      bu_email         TEXT,
+      il4_learnings    TEXT,
+      effort_scores    TEXT DEFAULT '{}',
       created_at       TEXT NOT NULL,
       created_by       TEXT,
       updated_at       TEXT,
       updated_by       TEXT
     );
+  `);
 
+  try { db.exec("ALTER TABLE projects ADD COLUMN bu_email TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN il4_learnings TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN effort_scores TEXT DEFAULT '{}';"); } catch (e) {}
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS audit_log (
       id           TEXT PRIMARY KEY,
       project_id   TEXT,

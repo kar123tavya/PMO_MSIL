@@ -97,6 +97,9 @@ function rowToProject(row) {
     createdBy:       row.created_by,
     updatedAt:       row.updated_at,
     updatedBy:       row.updated_by,
+    buEmail:         row.bu_email,
+    il4Learnings:    row.il4_learnings,
+    effortScores:    JSON.parse(row.effort_scores || '{}'),
   };
 }
 
@@ -209,9 +212,9 @@ router.post('/', authMiddleware, (req, res) => {
     id, parent_code, project, theme, division, status, category, fy,
     live_target, live_actual, manhours, direct_cost, proactive_defect, use_cases,
     flagship, mis, critical, third_party, overall_status,
-    il_phases, phases, custom_data, assigned_to, assigned_staff_id,
+    il_phases, phases, custom_data, assigned_to, assigned_staff_id, bu_email, il4_learnings, effort_scores,
     created_at, created_by, updated_at, updated_by
-  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id, pCode, p.project, p.theme||null, p.division||null,
     p.status||null, p.category||null, p.fy||null,
@@ -221,6 +224,7 @@ router.post('/', authMiddleware, (req, res) => {
     p.overallStatus||null,
     JSON.stringify(p.il_phases||[]), JSON.stringify(p.phases||{}), JSON.stringify(p.customData||{}),
     p.assignedTo||null, p.assignedStaffId||null,
+    p.buEmail||null, p.il4Learnings||null, JSON.stringify(p.effortScores||{}),
     nowIso, req.user.email, nowIso, req.user.email
   );
 
@@ -341,6 +345,7 @@ router.put('/:id', authMiddleware, (req, res) => {
     live_target=?, live_actual=?, manhours=?, direct_cost=?, proactive_defect=?, use_cases=?,
     flagship=?, mis=?, critical=?, third_party=?, overall_status=?,
     il_phases=?, phases=?, custom_data=?, assigned_to=?, assigned_staff_id=?,
+    bu_email=?, il4_learnings=?, effort_scores=?,
     updated_at=?, updated_by=?
     WHERE id=?`
   ).run(
@@ -352,6 +357,7 @@ router.put('/:id', authMiddleware, (req, res) => {
     p.overallStatus||null,
     JSON.stringify(p.il_phases||[]), JSON.stringify(p.phases||{}), JSON.stringify(p.customData||{}),
     p.assignedTo||null, p.assignedStaffId||null,
+    p.buEmail||null, p.il4Learnings||null, JSON.stringify(p.effortScores||{}),
     now, req.user.email,
     req.params.id
   );
@@ -402,7 +408,9 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
     parent_code=?, project=?, theme=?, division=?, status=?, category=?, fy=?,
     live_target=?, live_actual=?, manhours=?, direct_cost=?, proactive_defect=?, use_cases=?,
     flagship=?, mis=?, critical=?, third_party=?, overall_status=?,
+    flagship=?, mis=?, critical=?, third_party=?, overall_status=?,
     il_phases=?, phases=?, custom_data=?, assigned_to=?, assigned_staff_id=?,
+    bu_email=?, il4_learnings=?, effort_scores=?,
     updated_at=?, updated_by=?
     WHERE id=?`
   ).run(
@@ -414,6 +422,7 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
     p.overallStatus||null,
     JSON.stringify(p.il_phases||[]), JSON.stringify(p.phases||{}), JSON.stringify(p.customData||{}),
     p.assignedTo||null, p.assignedStaffId||null,
+    p.buEmail||null, p.il4Learnings||null, JSON.stringify(p.effortScores||{}),
     now, notif.from_name,
     req.params.id
   );
@@ -494,6 +503,33 @@ router.delete('/:id', authMiddleware, (req, res) => {
 
   _broadcast('projects_changed', getAllRows());
   triggerExcelRewrite(db);
+  res.json({ ok: true });
+});
+
+/* POST /api/projects/:id/effort_score */
+router.post('/:id/effort_score', authMiddleware, (req, res) => {
+  const existing = db.prepare('SELECT effort_scores FROM projects WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Project not found.' });
+
+  const role = req.user.role; // expecting 'pic' or 'sic'
+  if (!['pic', 'sic'].includes(role)) {
+    return res.status(403).json({ error: 'Only PIC and SIC can submit effort scores.' });
+  }
+
+  let scores = {};
+  try { scores = JSON.parse(existing.effort_scores || '{}'); } catch(e) {}
+  
+  // store confidentially using the role as key
+  scores[role] = {
+    bu: parseInt(req.body.bu || 0),
+    pic: parseInt(req.body.pic || 0),
+    sic: parseInt(req.body.sic || 0)
+  };
+
+  db.prepare('UPDATE projects SET effort_scores = ? WHERE id = ?').run(JSON.stringify(scores), req.params.id);
+  
+  // Do NOT write to audit log to maintain confidentiality!
+  _broadcast('projects_changed', getAllRows());
   res.json({ ok: true });
 });
 

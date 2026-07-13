@@ -12,7 +12,9 @@ import { useProjects }       from '../context/ProjectContext'
 import { useAuth }           from '../context/AuthContext'
 import { useToast }          from '../context/ToastContext'
 import api from '../api/client'
+import { calculateProjectProgress } from '../utils/progressCalc'
 
+const DIVISIONS = ['COP', 'MA', 'VQ', 'VU', 'VI', 'MQ', 'PDS']
 const STATUS_OPTS = ['IL1','IL2','IL3','IL4','IL5','Live','On Hold','Cancelled']
 const IL_PHASES = [
   { id:'il1', label:'IL1 – Ideation',            subtasks:['Business problem identification','BRD Preparation & refinement','Value Creation Framework (Cost benefit and ROI analysis)','Project feasibility assessment (Technology Selection)'] },
@@ -244,7 +246,7 @@ export default function Dashboard() {
           <div id="tour-table" className="table-wrap">
             <table>
               <thead><tr>
-                <th>Code</th><th>Project Name</th><th>Status</th><th>Live Target</th>
+                <th>Code</th><th>Project Name</th><th>Status</th><th>% Done</th><th>Live Target</th>
                 <th>Category</th><th>Division</th><th>FY</th><th>Man-hrs/Mo</th>
                 <th>Cost (₹)</th><th>Defects</th><th>Use Cases</th>
                 <th>Flag</th><th>Critical</th><th>MIS</th><th>Assigned To</th>
@@ -260,6 +262,7 @@ export default function Dashboard() {
                       <td style={{fontFamily:'monospace',fontSize:'.75rem',color:'var(--text-muted)'}}>{p.parentCode||genCode(p._key)}</td>
                       <td className="td-projname" onClick={()=>{setEditing(p);setModal(true)}}>{p.project||'—'}</td>
                       <td><StatusPill status={p.status}/></td>
+                      <td style={{fontWeight:'bold', color:'var(--primary)', textAlign:'center'}}>{calculateProjectProgress(p)}%</td>
                       <td style={{fontSize:'.75rem',whiteSpace:'nowrap'}}>{fmtDate(p.liveTarget)}</td>
                       <td style={{fontSize:'.75rem'}}>{p.category||'—'}</td>
                       <td style={{fontSize:'.75rem'}}>{p.division||'—'}</td>

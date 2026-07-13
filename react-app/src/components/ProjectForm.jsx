@@ -121,6 +121,8 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
   const [tp,    setTp]    = useState(project?.thirdParty||false)
   const [ovr,   setOvr]   = useState(project?.overallStatus||'')
   const [staff, setStaff] = useState(project?.assignedStaffId||'')
+  const [buEmail, setBuEmail] = useState(project?.buEmail||'')
+  const [il4Learnings, setIl4Learnings] = useState(project?.il4Learnings||'')
   const [phases,setPhases]= useState(()=>buildPhases(ilPhases, project?.il_phases))
 
   function updPhaseDt(pi,f,v){ setPhases(ps=>ps.map((p,i)=>i!==pi?p:{...p,[f]:v})) }
@@ -166,6 +168,8 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
       overallStatus: ovr, il_phases: phases,
       phases: project?.phases||{}, customData: project?.customData||{},
       assignedStaffId: staff || null,
+      buEmail: buEmail || null,
+      il4Learnings: il4Learnings || null,
     })
   }
 
@@ -210,7 +214,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
             </div>
             <div className="form-group"><label>Live Target Date</label><input type="date" value={ltgt} onChange={e=>setLtgt(e.target.value)}/></div>
             <div className="form-group"><label>Live Actual Date</label><input type="date" value={lact} onChange={e=>setLact(e.target.value)}/></div>
-            <div className="form-group"><label>Assigned Staff</label>
+            <div className="form-group"><label>Assigned Staff (PIC)</label>
               <select value={staff} onChange={e=>setStaff(e.target.value)}>
                 <option value="">-- Unassigned --</option>
                 {users.map(u => (
@@ -220,6 +224,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                 ))}
               </select>
             </div>
+            <div className="form-group"><label>Business User (BU) Email</label><input type="email" value={buEmail} onChange={e=>setBuEmail(e.target.value)} placeholder="BU's Email ID"/></div>
           </div>
           <div className="form-grid-3" style={{marginBottom:14}}>
             <div className="form-group"><label>Man-hrs / Month</label><input type="number" value={mh}   onChange={e=>setMh(e.target.value)}   min="0"/></div>
@@ -234,6 +239,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
             <label className="checkbox-row"><input type="checkbox" checked={tp}   onChange={e=>setTp(e.target.checked)} /> 3rd Party</label>
           </div>
           <div className="form-group"><label>Current Status (As-on-date)</label><textarea rows={2} value={ovr} onChange={e=>setOvr(e.target.value)} placeholder="Overall current status / progress remark…"/></div>
+          <div className="form-group"><label>IL4 - New Changes & Learnings</label><textarea rows={2} value={il4Learnings} onChange={e=>setIl4Learnings(e.target.value)} placeholder="Document any new changes or learnings from UAT (PIC)..."/></div>
         </div>
 
         <div className="form-section">
@@ -360,6 +366,66 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
             ))}
           </div>
         </div>
+        
+        {(isEdit && (status === 'IL5' || status === 'Live') && (user?.role === 'pic' || user?.role === 'sic' || user?.role === 'dpm' || user?.role === 'admin')) && (
+          <div className="form-section" style={{marginTop: 20}}>
+            <div className="form-section-title" style={{display:'flex', alignItems:'center', gap:8}}>
+              <span style={{color:'var(--primary)'}}>🔒</span> CONFIDENTIAL EFFORT SCORING (IL5 / LIVE)
+            </div>
+            {user?.role === 'dpm' || user?.role === 'admin' ? (
+              <div style={{marginTop:10, padding: 12, background: 'var(--surface-2)', borderRadius: 6}}>
+                <h4 style={{fontSize:'0.8rem', marginBottom:8}}>DPM View (Scores Submitted)</h4>
+                <div style={{display:'flex', gap:20}}>
+                  <div style={{flex: 1, padding: 10, background: 'white', borderRadius: 4, border: '1px solid var(--border)'}}>
+                    <strong style={{fontSize:'0.75rem'}}>PIC's Submission:</strong>
+                    <div style={{fontSize:'0.8rem', marginTop: 4}}>BU: {project?.effortScores?.pic?.bu || 0}%</div>
+                    <div style={{fontSize:'0.8rem'}}>PIC: {project?.effortScores?.pic?.pic || 0}%</div>
+                    <div style={{fontSize:'0.8rem'}}>SIC: {project?.effortScores?.pic?.sic || 0}%</div>
+                  </div>
+                  <div style={{flex: 1, padding: 10, background: 'white', borderRadius: 4, border: '1px solid var(--border)'}}>
+                    <strong style={{fontSize:'0.75rem'}}>SIC's Submission:</strong>
+                    <div style={{fontSize:'0.8rem', marginTop: 4}}>BU: {project?.effortScores?.sic?.bu || 0}%</div>
+                    <div style={{fontSize:'0.8rem'}}>PIC: {project?.effortScores?.sic?.pic || 0}%</div>
+                    <div style={{fontSize:'0.8rem'}}>SIC: {project?.effortScores?.sic?.sic || 0}%</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{marginTop:10, padding: 12, background: 'var(--surface-2)', borderRadius: 6}}>
+                <p style={{fontSize:'0.75rem', marginBottom:10, color:'var(--text-muted)'}}>
+                  Submit your confidential assessment of effort contribution. (Must sum to 100). This will only be visible to the DPM.
+                </p>
+                <div style={{display:'flex', gap: 10, alignItems: 'center'}}>
+                  <div style={{display:'flex', flexDirection:'column'}}>
+                    <label style={{fontSize:'0.7rem'}}>BU/DE %</label>
+                    <input id="es_bu" type="number" min="0" max="100" defaultValue={project?.effortScores?.[user.role]?.bu || ""} style={{width: 70, padding: '4px'}} />
+                  </div>
+                  <div style={{display:'flex', flexDirection:'column'}}>
+                    <label style={{fontSize:'0.7rem'}}>PIC %</label>
+                    <input id="es_pic" type="number" min="0" max="100" defaultValue={project?.effortScores?.[user.role]?.pic || ""} style={{width: 70, padding: '4px'}} />
+                  </div>
+                  <div style={{display:'flex', flexDirection:'column'}}>
+                    <label style={{fontSize:'0.7rem'}}>SIC %</label>
+                    <input id="es_sic" type="number" min="0" max="100" defaultValue={project?.effortScores?.[user.role]?.sic || ""} style={{width: 70, padding: '4px'}} />
+                  </div>
+                  <button type="button" className="btn btn-primary" style={{marginTop: 14}} onClick={async (e) => {
+                    e.preventDefault();
+                    const bu = parseInt(document.getElementById('es_bu').value || 0);
+                    const pic = parseInt(document.getElementById('es_pic').value || 0);
+                    const sic = parseInt(document.getElementById('es_sic').value || 0);
+                    if (bu + pic + sic !== 100) return alert('Scores must sum to exactly 100%!');
+                    try {
+                      const res = await api.post(`/projects/${project._key}/effort_score`, { bu, pic, sic });
+                      alert('Confidential score submitted successfully!');
+                    } catch(err) {
+                      alert('Failed to submit score: ' + err.message);
+                    }
+                  }}>Submit Score</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         </form>
       </div>
       </Modal>
