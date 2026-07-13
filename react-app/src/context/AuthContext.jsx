@@ -35,27 +35,25 @@ export function AuthProvider({ children }) {
   const can = useCallback((action) => {
     if (!user) return false
     const PERMS = {
-      admin:           ['view_all','add_project','delete_project','edit_core','update_phase','update_status','import','export','manage_users','view_history','assign_project','manage_settings'],
-      department_head: ['view_all','add_project','delete_project','edit_core','update_phase','update_status','export','manage_users','view_history'],
-      division_head:   ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
-      section_head:    ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
-      pic:             ['view_all','update_phase','update_status','export','view_history'],
-      viewer:          ['view_all','export'],
+      admin:  ['view_all','add_project','delete_project','edit_core','update_phase','update_status','import','export','manage_users','view_history','assign_project','manage_settings'],
+      dpm:    ['view_all','add_project','edit_core','update_phase','update_status','export','manage_users','view_history'],
+      sic:    ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
+      tl:     ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
+      pic:    ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
+      viewer: ['view_all','export'],
     }
-    const effectiveRole = user.role === 'senior_manager' ? 'admin' : user.role === 'deputy_manager' ? 'pic' : user.role;
-    return (PERMS[effectiveRole] || []).includes(action)
+    return (PERMS[user.role] || []).includes(action)
   }, [user])
 
   const getRoleLabel = (role) => {
-    const effectiveRole = role === 'senior_manager' ? 'admin' : role === 'deputy_manager' ? 'pic' : role;
     return {
       admin: 'Admin',
-      department_head: 'Department Head',
-      division_head: 'Division Head',
-      section_head: 'Section Head',
+      dpm: 'Department Project Manager (DPM)',
+      sic: 'Section In Charge (SIC)',
+      tl: 'Team Lead (TL)',
       pic: 'Person In Charge (PIC)',
       viewer: 'Viewer',
-    }[effectiveRole] || effectiveRole
+    }[role] || role
   }
 
   return (

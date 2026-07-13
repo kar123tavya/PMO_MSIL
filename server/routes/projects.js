@@ -248,42 +248,92 @@ router.put('/:id', authMiddleware, (req, res) => {
 
   // If a PIC edits, it requires multi-tier approval
   if (u.role === 'pic') {
-    // Find heads of this division/department
-    const headRows = db.prepare("SELECT email FROM users WHERE role IN ('department_head', 'division_head', 'section_head')").all();
-    const headEmails = headRows.map(r => r.email);
-    
-    // Also include admin just in case
-    const adminRows = db.prepare("SELECT email FROM users WHERE role = 'admin'").all();
-    const adminEmails = adminRows.map(r => r.email);
-    
-    // Find PICs of the target division
-    const divPicRows = db.prepare("SELECT email FROM users WHERE role = 'pic' AND division = ?").all(existing.division);
-    const divPicEmails = divPicRows.map(r => r.email);
+    let approvers = [];
+    let ccUsers = [];
 
-    const allApprovers = [...new Set([...headEmails, ...adminEmails, ...divPicEmails])];
-    
+    const getManagers = (email) => {
+      let tl = null, sic = null, dpm = null;
+      let curr = db.prepare('SELECT manager_email, role FROM users WHERE email=?').get(email);
+      
+      if (curr && curr.manager_email && curr.role === 'pic') {
+         tl = curr.manager_email;
+         curr = db.prepare('SELECT manager_email, role FROM users WHERE email=?').get(curr.manager_email);
+      } else if (curr && curr.role === 'tl') {
+         // handle case where the target is a TL
+         tl = email;
+      }
+      
+      if (curr && curr.manager_email && curr.role === 'tl') {
+         sic = curr.manager_email;
+         curr = db.prepare('SELECT manager_email, role FROM users WHERE email=?').get(curr.manager_email);
+      } else if (curr && curr.role === 'sic') {
+         sic = email;
+      }
+      
+      if (curr && curr.manager_email && curr.role === 'sic') {
+         dpm = curr.manager_email;
+      }
+      return { tl, sic, dpm };
+    };
+
     let notifBody = `${u.name} proposed edits to project: ${existing.project}`;
-    if (p._crossDivisionReason && existing.division !== u.division) {
-      notifBody += `\n\n**Cross-Division Edit Reason:** ${p._crossDivisionReason}`;
+    let dpmToNotify = null;
+
+    if (existing.division === u.division) {
+      // Intra-division: PIC's own managers
+      const mgrs = getManagers(u.email);
+      if (mgrs.tl) approvers.push(mgrs.tl);
+      if (mgrs.sic) approvers.push(mgrs.sic);
+      dpmToNotify = mgrs.dpm;
+    } else {
+      // Cross-division: Target project's PIC's managers
+      if (p._crossDivisionReason) {
+        notifBody += `\n\n**Cross-Division Edit Reason:** ${p._crossDivisionReason}`;
+      }
+      const targetPicEmail = existing.assigned_to;
+      if (targetPicEmail) {
+        ccUsers.push(targetPicEmail); // Notify the target PIC
+        const mgrs = getManagers(targetPicEmail);
+        if (mgrs.tl) approvers.push(mgrs.tl);
+        if (mgrs.sic) approvers.push(mgrs.sic);
+        dpmToNotify = mgrs.dpm;
+      }
     }
 
-    db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, from_user, from_name, project_id, project_name, status, changes_json, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', notifBody, JSON.stringify(allApprovers), u.email, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), now);
+    const adminRows = db.prepare("SELECT email FROM users WHERE role = 'admin'").all();
+    const adminEmails = adminRows.map(r => r.email);
+
+    if (approvers.length === 0) {
+       approvers.push(...adminEmails); // fallback to admin
+    } else {
+       // Also allow admins to see and approve anything
+       approvers.push(...adminEmails);
+    }
+    
+    // De-duplicate
+    approvers = [...new Set(approvers.filter(Boolean))];
+    ccUsers = [...new Set(ccUsers.filter(Boolean))];
+
+    // Encode DPM info into the custom_data field of the notification so we know who to notify later
+    const customData = JSON.stringify({ dpm_email: dpmToNotify });
+
+    db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, cc_users, from_user, from_name, project_id, project_name, status, changes_json, custom_data, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(uuidv4(), 'edit_approval', 'Pending Project Edit', notifBody, JSON.stringify(approvers), JSON.stringify(ccUsers), u.email, u.name, req.params.id, existing.project, 'pending', JSON.stringify(p), customData, now);
     
     // Broadcast notification change
     const notifs = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
     _broadcast('notifications_changed', notifs);
     
-    // Send Email
-    sendApprovalEmail([...allApprovers, u.email], {
+    // Send Email (optional, ignored for now as we simulate it)
+    sendApprovalEmail([...approvers, ...ccUsers, u.email], {
       projectName: existing.project,
       requestedBy: u.name,
       division: existing.division || 'N/A',
       reason: p._crossDivisionReason || ''
     });
 
-    return res.status(202).json({ accepted: true, message: 'Edits submitted for Head approval.' });
+    return res.status(202).json({ accepted: true, message: 'Edits submitted for approval.' });
   }
 
   db.prepare(`UPDATE projects SET
@@ -334,7 +384,7 @@ router.put('/:id', authMiddleware, (req, res) => {
 
 /* PUT /api/projects/:id/approve_edit */
 router.put('/:id/approve_edit', authMiddleware, (req, res) => {
-  if (!['admin', 'department_head', 'division_head', 'section_head'].includes(req.user.role)) {
+  if (!['admin', 'dpm', 'sic', 'tl'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Insufficient permissions to approve edits.' });
   }
   
@@ -395,15 +445,31 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
   );
   _broadcast('notification_new', { id: returnId, type: 'general', title: 'Your edit was Approved', priority: 'normal', from_name: 'System' });
 
+  // Send a notification to the DPM if we captured their email during the request
+  try {
+    let ndata = {};
+    if (notif.custom_data) ndata = JSON.parse(notif.custom_data);
+    if (ndata.dpm_email) {
+      const dpmId = uuidv4();
+      db.prepare(`INSERT INTO notifications
+        (id, type, title, body, to_users, cc_users, from_user, from_name, project_id, project_name, status, priority, read_by, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ).run(dpmId, 'general', 'Project Edit Approved in your Department', 
+        `An edit for project **${p.project}** originally requested by ${notif.from_name} was approved by ${req.user.name}.`,
+        JSON.stringify([ndata.dpm_email]), '[]', 'system', 'System', req.params.id, p.project, 'approved', 'low', '[]', now);
+      _broadcast('notification_new', { id: dpmId, type: 'general', title: 'Project Edit Approved in your Department', priority: 'low', from_name: 'System' });
+    }
+  } catch (e) {}
+
   if (diffs.length > 0) {
     const stmt = db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,field_name,from_val,to_val,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
     // Note: use notif.from_user and notif.from_name as the author of the edits
     for (const d of diffs) {
-      stmt.run(uuidv4(), req.params.id, p.project, notif.from_user, notif.from_name, 'deputy_manager', 'edit_approved', d.field, d.from, d.to, now);
+      stmt.run(uuidv4(), req.params.id, p.project, notif.from_user, notif.from_name, 'pic', 'edit_approved', d.field, d.from, d.to, now);
     }
   } else {
     db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
-      VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), req.params.id, p.project, notif.from_user, notif.from_name, 'deputy_manager', 'edit_approved', now);
+      VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), req.params.id, p.project, notif.from_user, notif.from_name, 'pic', 'edit_approved', now);
   }
 
   _broadcast('projects_changed', getAllRows());
@@ -414,8 +480,8 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
 
 /* DELETE /api/projects/:id */
 router.delete('/:id', authMiddleware, (req, res) => {
-  if (req.user.role !== 'senior_manager')
-    return res.status(403).json({ error: 'Only Senior Managers can delete projects.' });
+  if (req.user.role !== 'admin')
+    return res.status(403).json({ error: 'Only Admins can delete projects.' });
 
   const existing = db.prepare('SELECT project FROM projects WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Project not found.' });

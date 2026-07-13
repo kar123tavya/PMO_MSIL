@@ -47,7 +47,8 @@ function initSchema() {
       name         TEXT NOT NULL,
       email        TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role         TEXT NOT NULL DEFAULT 'pic',
+      role         TEXT NOT NULL DEFAULT 'viewer',
+      manager_email TEXT,
       department   TEXT,
       division     TEXT,
       section      TEXT,
@@ -57,6 +58,20 @@ function initSchema() {
       created_at   TEXT NOT NULL,
       updated_at   TEXT
     );
+  `);
+
+  try { db.exec("ALTER TABLE users ADD COLUMN manager_email TEXT;"); } catch (e) {}
+
+  // Migrate roles
+  db.exec(`
+    UPDATE users SET role = 'dpm' WHERE role = 'department_head';
+    UPDATE users SET role = 'sic' WHERE role = 'division_head';
+    UPDATE users SET role = 'tl' WHERE role = 'section_head';
+    UPDATE users SET role = 'admin' WHERE role = 'senior_manager';
+    UPDATE users SET role = 'pic' WHERE role = 'deputy_manager';
+  `);
+  
+  db.exec(`
 
     CREATE TABLE IF NOT EXISTS projects (
       id               TEXT PRIMARY KEY,

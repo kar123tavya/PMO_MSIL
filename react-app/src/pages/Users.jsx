@@ -61,7 +61,7 @@ export default function Users() {
     }
   }
 
-  async function handleRoleChange(uid, newRole) {
+  async function handleRoleChange(uid, newRole, newManagerEmail) {
     const target = users.find(u => u.uid === uid)
     if (!target) return
     try {
@@ -71,7 +71,7 @@ export default function Users() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionStorage.getItem('pmo_session') ? JSON.parse(sessionStorage.getItem('pmo_session')).token : ''}` 
         },
-        body: JSON.stringify({ ...target, role: newRole })
+        body: JSON.stringify({ ...target, role: newRole !== undefined ? newRole : target.role, manager_email: newManagerEmail !== undefined ? newManagerEmail : target.manager_email })
       })
       if (!res.ok) throw new Error('Failed to update role')
       showToast('Role updated.', 'success')
@@ -132,19 +132,40 @@ export default function Users() {
                           {u.uid === user.uid ? (
                             <span className="stage-tag">{getRoleLabel(u.role)}</span>
                           ) : (
-                            <select 
-                              className="filter-select" 
-                              style={{padding: '4px', fontSize: '0.85rem', width: 'auto'}}
-                              value={u.role}
-                              onChange={(e) => handleRoleChange(u.uid, e.target.value)}
-                            >
-                              <option value="viewer">Viewer</option>
-                              <option value="pic">Person In Charge (PIC)</option>
-                              <option value="section_head">Section Head</option>
-                              <option value="division_head">Division Head</option>
-                              <option value="department_head">Department Head</option>
-                              <option value="admin">Admin</option>
-                            </select>
+                            <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                              <select 
+                                className="filter-select" 
+                                style={{padding: '4px', fontSize: '0.85rem', width: 'auto'}}
+                                value={u.role}
+                                onChange={(e) => handleRoleChange(u.uid, e.target.value, undefined)}
+                              >
+                                <option value="viewer">Viewer</option>
+                                <option value="pic">Person In Charge (PIC)</option>
+                                <option value="tl">Team Lead (TL)</option>
+                                <option value="sic">Section In Charge (SIC)</option>
+                                <option value="dpm">Department Project Manager (DPM)</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                              
+                              {['pic', 'tl', 'sic'].includes(u.role) && (
+                                <select 
+                                  className="filter-select" 
+                                  style={{padding: '4px', fontSize: '0.8rem', width: 'auto', background: '#f8fafc'}}
+                                  value={u.manager_email || ''}
+                                  onChange={(e) => handleRoleChange(u.uid, undefined, e.target.value)}
+                                >
+                                  <option value="">-- Select Manager --</option>
+                                  {users.filter(m => {
+                                    if (u.role === 'pic') return m.role === 'tl';
+                                    if (u.role === 'tl') return m.role === 'sic';
+                                    if (u.role === 'sic') return m.role === 'dpm';
+                                    return false;
+                                  }).map(m => (
+                                    <option key={m.uid} value={m.email}>{m.name} ({getRoleLabel(m.role)})</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td>
