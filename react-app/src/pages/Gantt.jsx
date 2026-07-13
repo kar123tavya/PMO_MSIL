@@ -95,7 +95,9 @@ export default function Gantt() {
   const [showColMgr,      setShowColMgr]      = useState(false)
   const [customCols,      setCustomCols]      = useState([])
   // Tracks horizontal scroll to float project labels inside the gantt area
-  const [ganttScrollX,    setGanttScrollX]    = useState(0)
+  const [ganttScrollX,      setGanttScrollX]      = useState(0)
+  // Which project label is highlighted (when clicked from the gantt badge)
+  const [highlightedProjKey, setHighlightedProjKey] = useState(null)
 
   // prevent recursive scroll sync
   const isSyncingScroll = useRef(false)
@@ -128,6 +130,21 @@ export default function Gantt() {
   }
   function handleXScroll(e) {
     setGanttScrollX(e.target.scrollLeft)
+  }
+
+  // Called when user clicks the floating project badge in the gantt area.
+  // Scrolls the left label panel to that project row and briefly highlights it.
+  function scrollToLabel(projKey) {
+    const el = document.getElementById(`label-proj-${projKey}`)
+    if (el && labelsRef.current) {
+      // Scroll left panel so the project label is near the top
+      labelsRef.current.scrollTop = el.offsetTop - 8
+      // Also sync the right gantt body
+      if (ganttBodyRef.current) ganttBodyRef.current.scrollTop = el.offsetTop - 8
+    }
+    // Highlight for 1.5 seconds
+    setHighlightedProjKey(projKey)
+    setTimeout(() => setHighlightedProjKey(null), 1500)
   }
 
   const filtered = useMemo(() =>
@@ -317,19 +334,24 @@ export default function Gantt() {
             >
               {filtered.map(p => (
                 <div key={p._key}>
-                  {/* Project row */}
-                  <div style={{
-                    padding:'0 10px',
-                    fontWeight:700,
-                    fontSize:'.78rem',
-                    color:'var(--primary)',
-                    background:'var(--surface-2)',
-                    borderBottom:'1px solid var(--border)',
-                    height:ROW_H_PRJ,
-                    display:'flex',
-                    alignItems:'center',
-                    overflow:'hidden',
-                  }}>
+                  {/* Project row — id is used for scrollToLabel() */}
+                  <div
+                    id={`label-proj-${p._key}`}
+                    style={{
+                      padding:'0 10px',
+                      fontWeight:700,
+                      fontSize:'.78rem',
+                      color: highlightedProjKey === p._key ? '#fff' : 'var(--primary)',
+                      background: highlightedProjKey === p._key ? '#1e3a8a' : 'var(--surface-2)',
+                      borderBottom:'1px solid var(--border)',
+                      height:ROW_H_PRJ,
+                      display:'flex',
+                      alignItems:'center',
+                      overflow:'hidden',
+                      transition:'background 0.3s, color 0.3s',
+                      borderLeft: highlightedProjKey === p._key ? '4px solid #60a5fa' : '4px solid transparent',
+                    }}
+                  >
                     <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={p.project}>{p.project}</span>
                   </div>
                   {/* IL phase rows */}
@@ -436,25 +458,32 @@ export default function Gantt() {
                         {/* Project-level bar row — floating project name follows the scroll */}
                         <div style={{position:'relative',height:ROW_H_PRJ,borderBottom:'1px solid var(--border)',background:'var(--surface-2)'}}>
                           {/* Floating project name label — always visible at the left edge of the viewport */}
-                          <div style={{
-                            position: 'absolute',
-                            left: ganttScrollX + 8,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'rgba(30,58,138,0.88)',
-                            color: '#fff',
-                            padding: '2px 8px',
-                            borderRadius: 10,
-                            fontSize: '.68rem',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                            maxWidth: 220,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            zIndex: 5,
-                            pointerEvents: 'none',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-                          }}>{p.project}</div>
+                          <div
+                            title="Click to jump to this project in the label panel"
+                            onClick={() => scrollToLabel(p._key)}
+                            style={{
+                              position: 'absolute',
+                              left: ganttScrollX + 8,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: highlightedProjKey === p._key ? '#2563eb' : 'rgba(30,58,138,0.88)',
+                              color: '#fff',
+                              padding: '2px 10px',
+                              borderRadius: 10,
+                              fontSize: '.68rem',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                              maxWidth: 240,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              zIndex: 5,
+                              cursor: 'pointer',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.22)',
+                              userSelect: 'none',
+                              transition: 'background 0.2s',
+                              border: '1px solid rgba(255,255,255,0.25)',
+                            }}
+                          >🔍 {p.project}</div>
                           {targetStart && p.liveTarget && bar(targetStart, p.liveTarget, 0, 16, false, true, p.project, '50%')}
                         </div>
                         {/* IL phase rows */}
