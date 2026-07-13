@@ -93,7 +93,7 @@ function buildPhases(defs, saved) {
 }
 
 export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClose, saving, readOnly = false }) {
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const isEdit  = !!project
 
   const [users, setUsers] = useState([])
