@@ -85,8 +85,14 @@ export function NotificationProvider({ children }) {
     fetchCount()
   }
 
+  async function clearAll() {
+    await axios.patch('/api/notifications/clear_all', {}, authCfg())
+    setItems([])
+    setCount(0)
+  }
+
   return (
-    <NotifContext.Provider value={{ items, count, loading, fetchAll, fetchCount, sendApproval, markRead, markAllRead, approveOrReject, approveEditRequest }}>
+    <NotifContext.Provider value={{ items, count, loading, fetchAll, fetchCount, sendApproval, markRead, markAllRead, approveOrReject, approveEditRequest, clearAll }}>
       {children}
     </NotifContext.Provider>
   )

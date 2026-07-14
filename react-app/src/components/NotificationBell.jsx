@@ -23,7 +23,7 @@ const STATUS_LABEL = {
 }
 
 export default function NotificationBell() {
-  const { count, items, loading, fetchAll, markRead, markAllRead, approveOrReject, approveEditRequest } = useNotifications()
+  const { count, items, loading, fetchAll, markRead, markAllRead, approveOrReject, approveEditRequest, clearAll } = useNotifications()
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const ref  = useRef(null)
@@ -95,9 +95,14 @@ export default function NotificationBell() {
             <div style={{ fontWeight: 700, fontSize: '.88rem', color: 'var(--text)' }}>
               Notifications {count > 0 && <span style={{ background: '#fee2e2', color: '#dc2626', borderRadius: '10px', padding: '1px 7px', fontSize: '.7rem', marginLeft: 6 }}>{count} new</span>}
             </div>
-            <button onClick={markAllRead} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
-              Mark all read
-            </button>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={markAllRead} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
+                Mark all read
+              </button>
+              <button onClick={clearAll} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: '#dc2626', cursor: 'pointer', fontWeight: 600 }}>
+                Clear All
+              </button>
+            </div>
           </div>
 
           {/* List */}

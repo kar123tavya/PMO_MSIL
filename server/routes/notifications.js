@@ -30,10 +30,13 @@ function userSees(n, user) {
 // ── GET /api/notifications/count ─────────────────────
 router.get('/count', authMiddleware, (req, res) => {
   try {
-    const all = db.prepare('SELECT read_by, to_users, cc_users, from_user FROM notifications ORDER BY created_at DESC').all();
+    const all = db.prepare('SELECT read_by, to_users, cc_users, from_user, cleared_by FROM notifications ORDER BY created_at DESC').all();
     let count = 0;
     for (const n of all) {
       if (!userSees(n, req.user)) continue;
+      const clearedBy = JSON.parse(n.cleared_by || '[]');
+      if (clearedBy.includes(req.user.uid)) continue;
+      
       const readBy = JSON.parse(n.read_by || '[]');
       if (!readBy.includes(req.user.uid)) count++;
     }
@@ -48,7 +51,7 @@ router.get('/', authMiddleware, (req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100').all();
     const mine = rows
-      .filter(n => userSees(n, req.user))
+      .filter(n => userSees(n, req.user) && !JSON.parse(n.cleared_by || '[]').includes(req.user.uid))
       .map(n => ({
         ...n,
         to_users:     JSON.parse(n.to_users  || '[]'),
@@ -101,6 +104,28 @@ router.post('/', authMiddleware, (req, res) => {
     _broadcast('notification_new', { id, type, title, priority, from_name: req.user.name });
 
     res.status(201).json({ ...created, to_users, cc_users });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/notifications/clear_all ───────────────
+router.patch('/clear_all', authMiddleware, (req, res) => {
+  try {
+    const all = db.prepare('SELECT id, to_users, cc_users, from_user, cleared_by FROM notifications').all();
+    const now = new Date().toISOString();
+    let updatedCount = 0;
+    
+    for (const n of all) {
+      if (!userSees(n, req.user)) continue;
+      const clearedBy = JSON.parse(n.cleared_by || '[]');
+      if (!clearedBy.includes(req.user.uid)) {
+        clearedBy.push(req.user.uid);
+        db.prepare('UPDATE notifications SET cleared_by=?, updated_at=? WHERE id=?').run(JSON.stringify(clearedBy), now, n.id);
+        updatedCount++;
+      }
+    }
+    res.json({ success: true, count: updatedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

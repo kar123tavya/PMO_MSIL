@@ -59,6 +59,8 @@ function initSchema() {
       updated_at   TEXT
     );
   `);
+  
+  try { db.prepare("ALTER TABLE notifications ADD COLUMN cleared_by TEXT DEFAULT '[]'").run(); } catch(e) {}
 
   try { db.exec("ALTER TABLE users ADD COLUMN manager_email TEXT;"); } catch (e) {}
 
@@ -143,6 +145,7 @@ function initSchema() {
       priority     TEXT DEFAULT 'normal',
       changes_json TEXT,
       read_by      TEXT DEFAULT '[]',
+      cleared_by   TEXT DEFAULT '[]',
       created_at   TEXT NOT NULL,
       updated_at   TEXT
     );

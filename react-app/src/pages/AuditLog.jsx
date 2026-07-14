@@ -61,6 +61,31 @@ export default function AuditLog() {
       .catch(e => alert('Export failed: ' + e))
   }
 
+  async function handleBulkDelete() {
+    if (!fromD || !toD) return alert('Please select both From and To dates to bulk delete.')
+    if (!window.confirm(`Are you sure you want to PERMANENTLY delete all audit logs from ${fromD} to ${toD}?`)) return
+    try {
+      const { data } = await axios.delete(`/api/audit/bulk`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        params: { from: fromD, to: toD }
+      })
+      alert(`Deleted ${data.deletedCount} log entries.`)
+      fetchAudit()
+    } catch (e) {
+      alert('Delete failed: ' + (e.response?.data?.error || e.message))
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Delete this audit log entry?')) return
+    try {
+      await axios.delete(`/api/audit/${id}`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      fetchAudit()
+    } catch (e) {
+      alert('Delete failed: ' + (e.response?.data?.error || e.message))
+    }
+  }
+
   // Client-side search filter
   const filtered = rows.filter(r => {
     if (!search) return true
@@ -101,7 +126,12 @@ export default function AuditLog() {
               <label style={{ fontSize: '.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>To</label>
               <input type="date" className="filter-select" value={toD} onChange={e => setToD(e.target.value)} style={{ padding: '5px 8px' }} />
             </div>
-            <button className="btn btn-ghost" onClick={() => { setActionF(''); setFromD(''); setToD(''); setSearch('') }}>Clear</button>
+            <button className="btn btn-ghost" onClick={() => { setActionF(''); setFromD(''); setToD(''); setSearch('') }}>Clear Filters</button>
+            {can('manage_settings') && fromD && toD && (
+              <button className="btn btn-danger" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={handleBulkDelete}>
+                🗑️ Bulk Delete Range
+              </button>
+            )}
             <div style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--text-muted)' }}>
               Showing {filtered.length} of {total} entries
             </div>
@@ -119,6 +149,7 @@ export default function AuditLog() {
                   <th>Field Changed</th>
                   <th>From</th>
                   <th>To</th>
+                  {can('manage_settings') && <th style={{width: 50}}></th>}
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +175,11 @@ export default function AuditLog() {
                       <td style={{ fontSize: '.75rem', color: 'var(--text-2)' }}>{r.field_name || '—'}</td>
                       <td style={{ fontSize: '.73rem', color: '#dc2626', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.from_val}>{r.from_val || '—'}</td>
                       <td style={{ fontSize: '.73rem', color: '#059669', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.to_val}>{r.to_val || '—'}</td>
+                      {can('manage_settings') && (
+                        <td>
+                          <button className="btn-ghost" style={{ padding: '2px 4px', color: '#dc2626' }} title="Delete log" onClick={() => handleDelete(r.id)}>✕</button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}

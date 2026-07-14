@@ -59,10 +59,42 @@ router.get('/export', authMiddleware, (req, res) => {
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
     const buf   = Buffer.from(wbout, 'binary');
 
+    res.setHeader('Content-Disposition', 'attachment; filename="Audit_Log.xlsx"');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="PMO_AuditLog_${new Date().toISOString().slice(0,10)}.xlsx"`);
-    res.setHeader('Content-Length', buf.length);
-    res.end(buf);
+    res.send(buf);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/audit/bulk ────────────────────────────
+router.delete('/bulk', authMiddleware, (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only Admins can delete audit logs.' });
+    }
+    const { from, to } = req.query;
+    if (!from || !to) return res.status(400).json({ error: 'Please provide both from and to dates.' });
+    
+    // Add time boundary to 'to'
+    const toBound = to.includes('T') ? to : to + 'T23:59:59';
+    
+    const info = db.prepare('DELETE FROM audit_log WHERE timestamp >= ? AND timestamp <= ?').run(from, toBound);
+    res.json({ success: true, deletedCount: info.changes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/audit/:id ─────────────────────────────
+router.delete('/:id', authMiddleware, (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only Admins can delete audit logs.' });
+    }
+    const info = db.prepare('DELETE FROM audit_log WHERE id = ?').run(req.params.id);
+    if (info.changes === 0) return res.status(404).json({ error: 'Audit log not found.' });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
