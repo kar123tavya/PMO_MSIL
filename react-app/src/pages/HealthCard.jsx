@@ -155,10 +155,10 @@ export default function HealthCard() {
         </div>
 
         {loading ? <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div> : (
-          <div style={{ overflowX: 'auto', background: '#e2e8f0', padding: 20, borderRadius: 12 }}>
+          <div style={{ maxWidth: 'calc(100vw - 300px)', overflowX: 'auto', background: '#e2e8f0', padding: 20, borderRadius: 12 }}>
             
             {/* THE ACTUAL HEALTH CARD */}
-            <div ref={cardRef} style={{ width: 1200, minHeight: 700, background: '#f8fafc', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <div ref={cardRef} style={{ minWidth: 1200, width: 1200, minHeight: 700, background: '#f8fafc', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
               
               {/* Header Bar */}
               <div style={{ display: 'flex', background: '#1e293b', color: '#fff', padding: '16px 24px', alignItems: 'center' }}>
