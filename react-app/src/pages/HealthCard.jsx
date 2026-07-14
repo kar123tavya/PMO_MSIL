@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import { useProjects } from '../context/ProjectContext'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
