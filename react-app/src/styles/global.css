@@ -62,6 +62,19 @@
   --transition: 0.2s ease;
 }
 
+/* Sidebar Collapsed State */
+body.sidebar-collapsed {
+  --sidebar-w: 72px;
+}
+body.sidebar-collapsed .brand-text { display: none; }
+body.sidebar-collapsed .nav-item span:not(.nav-icon) { display: none; }
+body.sidebar-collapsed .nav-section-label { display: none; }
+body.sidebar-collapsed .user-info { display: none; }
+body.sidebar-collapsed .logout-btn { display: none; }
+body.sidebar-collapsed .sidebar-footer { justify-content: center; padding: 16px 0; gap: 0; flex-direction: column; }
+body.sidebar-collapsed .nav-item { justify-content: center; padding: 10px 0; gap: 0; }
+body.sidebar-collapsed .sidebar-brand { justify-content: center; padding: 24px 0 20px; }
+
 /* ── Base Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 14px; scroll-behavior: smooth; }

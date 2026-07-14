@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
@@ -15,15 +15,27 @@ export default function Sidebar() {
   const { user, logout, getRoleLabel, can } = useAuth()
   const { count } = useNotifications()
 
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    if (collapsed) {
+      document.body.classList.add('sidebar-collapsed')
+    } else {
+      document.body.classList.remove('sidebar-collapsed')
+    }
+  }, [collapsed])
+
   return (
     <aside className="sidebar">
       {/* Brand */}
-      <div className="sidebar-brand">
+      <div className="sidebar-brand" style={{ position: 'relative' }}>
         <img 
           src="/maruti-logo.png" 
           alt="Maruti Suzuki" 
+          className="brand-text"
           style={{ height: '32px', width: 'auto', display: 'block' }} 
         />
+        {collapsed && <div style={{ fontWeight: '800', color: 'var(--brand)', fontSize: '1.2rem' }}>MS</div>}
       </div>
 
       {/* Nav */}
@@ -62,6 +74,13 @@ export default function Sidebar() {
           <span style={{ flex: 1 }}>Interactive Tutorial</span>
         </button>
       </nav>
+
+      <button 
+        onClick={() => setCollapsed(!collapsed)}
+        style={{ padding: '12px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-light)', display: 'flex', justifyContent: 'center' }}
+      >
+        {collapsed ? '>>' : '<< Minimize Sidebar'}
+      </button>
 
       {/* User footer */}
       <div className="sidebar-footer">
