@@ -4,10 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
 
 const NAV = [
-  { to: '/',         label: 'Dashboard',         icon: '▦', end: true },
-  { to: '/flagship', label: 'Flagship Projects',  icon: '◈', end: false },
-  { to: '/gantt',    label: 'Gantt Chart',         icon: '▤', end: false },
-  { to: '/audit',    label: 'Audit Log',           icon: '📋', end: false },
+  { to: '/',            label: 'Dashboard',         icon: '▦', end: true },
+  { to: '/flagship',    label: 'Flagship Projects', icon: '◈', end: false },
+  { to: '/gantt',       label: 'Gantt Chart',       icon: '▤', end: false },
+  { to: '/healthcard',  label: 'Health Card',       icon: '🏥', end: false },
+  { to: '/audit',       label: 'Audit Log',         icon: '📋', end: false },
 ]
 
 export default function Sidebar() {

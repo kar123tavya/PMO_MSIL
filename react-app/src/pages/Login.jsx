@@ -88,13 +88,16 @@ export default function Login() {
                 {rRole === 'pic' && (
                   <select className="login-input" value={rDiv} onChange={e=>setRDiv(e.target.value)} required>
                     <option value="">-- Select Division --</option>
+                    <option value="MQ">MQ</option>
+                    <option value="ND">ND</option>
+                    <option value="PQ-MP">PQ-MP</option>
+                    <option value="PQ-NPD">PQ-NPD</option>
                     <option value="COP">COP</option>
+                    <option value="PDS">PDS</option>
+                    <option value="VI">VI</option>
+                    <option value="VU">VU</option>
                     <option value="MA">MA</option>
                     <option value="VQ">VQ</option>
-                    <option value="VU">VU</option>
-                    <option value="VI">VI</option>
-                    <option value="MQ">MQ</option>
-                    <option value="PDS">PDS</option>
                   </select>
                 )}
                 <select className="login-input" value={rRole} onChange={e=>setRRole(e.target.value)}>

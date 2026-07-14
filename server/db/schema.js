@@ -62,6 +62,19 @@ function initSchema() {
   
   try { db.prepare("ALTER TABLE notifications ADD COLUMN cleared_by TEXT DEFAULT '[]'").run(); } catch(e) {}
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS health_cards (
+      id          TEXT PRIMARY KEY,
+      division    TEXT NOT NULL,
+      month_year  TEXT NOT NULL,
+      data_json   TEXT NOT NULL,
+      updated_by  TEXT,
+      updated_by_name TEXT,
+      updated_at  TEXT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_hc_div_month ON health_cards(division, month_year);
+  `);
+
   try { db.exec("ALTER TABLE users ADD COLUMN manager_email TEXT;"); } catch (e) {}
 
   // Migrate roles

@@ -14,7 +14,9 @@ import { useToast }          from '../context/ToastContext'
 import api from '../api/client'
 import { calculateProjectProgress } from '../utils/progressCalc'
 
-const DIVISIONS = ['COP', 'MA', 'VQ', 'VU', 'VI', 'MQ', 'PDS']
+const DIVISIONS = ['MQ', 'ND', 'PQ-MP', 'PQ-NPD', 'COP', 'PDS', 'VI', 'VU', 'MA', 'VQ']
+const CATEGORIES = ['Analytics & Digital', 'Bots', 'Dashboard', 'GenAI', 'PowerApps & Portal']
+const THEMES_LIST = ['Efficiency improvement', 'Enterprise Level', 'AI in business', 'Multilocation control', 'Startup collaboration for technology adoption']
 const STATUS_OPTS = ['IL1','IL2','IL3','IL4','IL5','Live','On Hold','Cancelled']
 const IL_PHASES = [
   { id:'il1', label:'IL1 – Ideation',            subtasks:['Business problem identification','BRD Preparation & refinement','Value Creation Framework (Cost benefit and ROI analysis)','Project feasibility assessment (Technology Selection)'] },
