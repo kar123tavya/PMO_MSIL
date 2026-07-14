@@ -110,6 +110,8 @@ export default function Dashboard() {
       .catch(err => showToast('Export failed: ' + err.message, 'error'))
   }
 
+  const divs = useMemo(()=>[...new Set([...DIVISIONS, ...projects.map(p=>p.division).filter(Boolean)])].sort(),[projects])
+  const cats = useMemo(()=>[...new Set([...CATEGORIES, ...projects.map(p=>p.category).filter(Boolean)])].sort(),[projects])
   const fys  = useMemo(()=>[...new Set(projects.map(p=>p.fy).filter(Boolean))].sort(),[projects])
 
   const filtered = useMemo(()=>projects.filter(p=>{
@@ -208,10 +210,10 @@ export default function Dashboard() {
 
           <div id="tour-filters" className="filters-bar">
             <select className="filter-select" value={divF} onChange={e=>setDivF(e.target.value)}>
-              <option value="">All Divisions</option>{DIVISIONS.map(d=><option key={d}>{d}</option>)}
+              <option value="">All Divisions</option>{divs.map(d=><option key={d}>{d}</option>)}
             </select>
             <select className="filter-select" value={catF} onChange={e=>setCatF(e.target.value)}>
-              <option value="">All Categories</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}
+              <option value="">All Categories</option>{cats.map(c=><option key={c}>{c}</option>)}
             </select>
             <select className="filter-select" value={fyF} onChange={e=>setFyF(e.target.value)}>
               <option value="">All FY</option>{fys.map(f=><option key={f}>{f}</option>)}

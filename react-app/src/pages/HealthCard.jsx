@@ -124,7 +124,7 @@ export default function HealthCard() {
   const boxStyle = { border: '1.5px solid #1e3a8a', borderRadius: 8, padding: 8, background: '#fff' }
   const boxTitle = { fontSize: '0.85rem', fontWeight: 800, color: '#1e40af', marginBottom: 8, borderBottom: '1px solid #e2e8f0', paddingBottom: 4 }
   
-  const renderCategoryRow = (title, icon, filterFn, isStartup) => {
+  const renderCategoryRow = (title, icon, filterFn, isStartup, dataKey) => {
     const counts = getCounts(filterFn)
     return (
       <div style={{ ...boxStyle, display: 'flex', flexDirection: 'column', gap: 6, borderColor: '#cbd5e1' }}>
@@ -151,6 +151,23 @@ export default function HealthCard() {
         <div style={{ fontSize: '0.65rem', color: '#475569', paddingLeft: 34 }}>
           {counts.live > 0 && <div style={{ marginBottom: 2 }}><strong style={{color:'#166534'}}>{isStartup ? 'Pilot:' : 'Live:'}</strong> {counts.liveNames}</div>}
           {counts.ongoing > 0 && <div><strong style={{color:'#b45309'}}>{isStartup ? 'Converted:' : 'Ongoing:'}</strong> {counts.ongoingNames}</div>}
+          
+          {(editMode || data[dataKey]) && (
+            <div style={{ marginTop: 4 }}>
+              {editMode ? (
+                <textarea 
+                  value={data[dataKey] || ''} 
+                  onChange={e => handleChange(dataKey, e.target.value)} 
+                  style={{ width: '100%', minHeight: 30, fontSize: '0.65rem', padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', resize: 'vertical' }}
+                  placeholder="Enter current status notes..." 
+                />
+              ) : (
+                <div style={{ fontSize: '0.65rem', color: '#334155', fontStyle: 'italic', marginTop: 2, whiteSpace: 'pre-wrap' }}>
+                  {data[dataKey]}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         {/* Usage Progress Bar Mockup */}
@@ -236,11 +253,11 @@ export default function HealthCard() {
                   <div style={{ flex: '0 0 45%', display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ textAlign: 'center', fontWeight: 800, color: '#334155', letterSpacing: 1, paddingBottom: 4, fontSize: '0.9rem' }}>CURRENT STATUS</div>
                     
-                    {renderCategoryRow('AI & Gen AI', '🧠', p => p.category === 'GenAI')}
-                    {renderCategoryRow('Analytics & IOT Projects', '📊', p => p.category === 'Analytics & Digital')}
-                    {renderCategoryRow('Startup Engagements', '💡', p => p.theme === 'Startup collaboration for technology adoption', true)}
-                    {renderCategoryRow('Visualization (Dashboards)', '🖥️', p => p.category === 'Dashboard')}
-                    {renderCategoryRow('Digitalization (Applications & Automation)', '🤖', p => p.category === 'PowerApps & Portal' || p.category === 'Bots')}
+                    {renderCategoryRow('AI & Gen AI', '🧠', p => p.category === 'GenAI', false, 'statusAiGenai')}
+                    {renderCategoryRow('Analytics & IOT Projects', '📊', p => p.category === 'Analytics & Digital', false, 'statusAnalytics')}
+                    {renderCategoryRow('Startup Engagements', '💡', p => p.theme === 'Startup collaboration for technology adoption', true, 'statusStartup')}
+                    {renderCategoryRow('Visualization (Dashboards)', '🖥️', p => p.category === 'Dashboard', false, 'statusDashboards')}
+                    {renderCategoryRow('Digitalization (Applications & Automation)', '🤖', p => p.category === 'PowerApps & Portal' || p.category === 'Bots', false, 'statusDigitalization')}
                   </div>
 
                   {/* CENTER COLUMN: Benefits */}

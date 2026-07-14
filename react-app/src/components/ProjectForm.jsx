@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Modal from './Modal'
 import { useAuth } from '../context/AuthContext'
+import { useProjects } from '../context/ProjectContext'
 import api from '../api/client'
 
 const DIVS  = ['MQ', 'ND', 'PQ-MP', 'PQ-NPD', 'COP', 'PDS', 'VI', 'VU', 'MA', 'VQ']
@@ -94,7 +95,12 @@ function buildPhases(defs, saved) {
 
 export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClose, saving, readOnly = false }) {
   const { can, user } = useAuth()
+  const { projects } = useProjects()
   const isEdit  = !!project
+
+  const dynamicDivs = [...new Set([...DIVS, ...(projects || []).map(p=>p.division).filter(Boolean)])].sort()
+  const dynamicThemes = [...new Set([...THEMES, ...(projects || []).map(p=>p.theme).filter(Boolean)])].sort()
+  const dynamicCats = [...new Set([...CATS, ...(projects || []).map(p=>p.category).filter(Boolean)])].sort()
 
   const [users, setUsers] = useState([])
   useEffect(() => {
@@ -188,14 +194,16 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
           <div className="form-grid-2" style={{marginBottom:14}}>
             <div className="form-group"><label>Project Name *</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Enter project name" required/></div>
             <div className="form-group"><label>Theme *</label>
-              <select value={theme} onChange={e=>setTheme(e.target.value)} required>
-                <option value="">Select theme</option>{THEMES.map(t=><option key={t}>{t}</option>)}
-              </select>
+              <input list="themes-list" value={theme} onChange={e=>setTheme(e.target.value)} placeholder="Type or select theme" required />
+              <datalist id="themes-list">
+                {dynamicThemes.map(t=><option key={t} value={t} />)}
+              </datalist>
             </div>
             <div className="form-group"><label>Division *</label>
-              <select value={div} onChange={e=>setDiv(e.target.value)} required>
-                <option value="">Select division</option>{DIVS.map(d=><option key={d}>{d}</option>)}
-              </select>
+              <input list="divs-list" value={div} onChange={e=>setDiv(e.target.value)} placeholder="Type or select division" required />
+              <datalist id="divs-list">
+                {dynamicDivs.map(d=><option key={d} value={d} />)}
+              </datalist>
             </div>
             <div className="form-group"><label>Status</label>
               <select value={status} onChange={e=>setStatus(e.target.value)}>
@@ -203,9 +211,10 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
               </select>
             </div>
             <div className="form-group"><label>Category</label>
-              <select value={cat} onChange={e=>setCat(e.target.value)}>
-                <option value="">Select category</option>{CATS.map(c=><option key={c}>{c}</option>)}
-              </select>
+              <input list="cats-list" value={cat} onChange={e=>setCat(e.target.value)} placeholder="Type or select category" />
+              <datalist id="cats-list">
+                {dynamicCats.map(c=><option key={c} value={c} />)}
+              </datalist>
             </div>
             <div className="form-group"><label>Financial Year</label>
               <select value={fy} onChange={e=>setFy(e.target.value)}>
