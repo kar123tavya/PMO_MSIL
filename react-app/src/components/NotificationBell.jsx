@@ -99,7 +99,7 @@ export default function NotificationBell() {
               <button onClick={markAllRead} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
                 Mark all read
               </button>
-              <button onClick={clearAll} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: '#dc2626', cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); clearAll(); }} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: '#dc2626', cursor: 'pointer', fontWeight: 600 }}>
                 Clear All
               </button>
             </div>

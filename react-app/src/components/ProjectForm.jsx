@@ -3,7 +3,7 @@ import Modal from './Modal'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 
-const DIVS  = ['Finance','Operations','IT','HR','Marketing','Sales','Legal & Compliance','Customer Service','Supply Chain','Strategy']
+const DIVS  = ['COP', 'MA', 'VQ', 'VU', 'VI', 'MQ', 'PDS']
 const THEMES= ['Digital Transformation','Customer Experience','Operational Excellence','Regulatory Compliance','Infrastructure','Innovation','Risk Management','Data & Analytics']
 const CATS  = ['Process Automation','Analytics','Customer Facing','Compliance','Infrastructure','Innovation','Reporting','Integration']
 const FYS   = ['2023-24','2024-25','2025-26','2026-27','2027-28']
@@ -253,6 +253,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                 <th style={{textAlign:'left', padding:'8px', fontSize:'0.7rem', color:'var(--text-muted)'}}>PHASE COLOR</th>
                 <th style={{textAlign:'left', padding:'8px', fontSize:'0.7rem', color:'var(--text-muted)'}}>TARGET DATE</th>
                 <th style={{textAlign:'left', padding:'8px', fontSize:'0.7rem', color:'var(--text-muted)'}}>ACTUAL DATE</th>
+                <th style={{textAlign:'left', padding:'8px', fontSize:'0.7rem', color:'var(--text-muted)'}}>REMARKS</th>
                 <th style={{textAlign:'center', padding:'8px', fontSize:'0.7rem', color:'var(--text-muted)'}}>SHOW ARROW?</th>
               </tr>
             </thead>
@@ -314,6 +315,15 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                         style={{width:'100%', padding:'6px 6px 6px 42px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem'}}
                       />
                     </div>
+                  </td>
+                  <td style={{padding:'8px'}}>
+                    <textarea 
+                      rows={2}
+                      value={ph.remark || ''} 
+                      onChange={e => updPhaseDt(pi, 'remark', e.target.value)}
+                      placeholder="Hover reason..."
+                      style={{width:'100%', padding:'6px', border:'1px solid var(--border)', borderRadius:4, fontSize:'0.75rem', minWidth: '120px'}}
+                    />
                   </td>
                   <td style={{padding:'8px', textAlign:'center'}}>
                     {pi < phases.length - 1 && (

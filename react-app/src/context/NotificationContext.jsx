@@ -86,9 +86,13 @@ export function NotificationProvider({ children }) {
   }
 
   async function clearAll() {
-    await axios.patch('/api/notifications/clear_all', {}, authCfg())
-    setItems([])
-    setCount(0)
+    try {
+      await axios.patch('/api/notifications/clear_all', {}, authCfg())
+      setItems([])
+      setCount(0)
+    } catch (e) {
+      console.error('Failed to clear notifications:', e)
+    }
   }
 
   return (

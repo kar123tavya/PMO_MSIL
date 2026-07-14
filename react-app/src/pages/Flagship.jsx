@@ -280,7 +280,7 @@ export default function Flagship() {
                             <div className="phase-arrow"></div>
                           )}
                           <div style={{display:'flex', flexDirection:'column', alignItems:'center', position:'relative', zIndex:5}}>
-                            <div className={stClass} style={customStyle} title={p.overallStatus ? `Reason: ${p.overallStatus}` : 'No reason provided'}></div>
+                            <div className={stClass} style={customStyle} title={il?.remark ? `Reason: ${il.remark}` : 'No phase remark provided'}></div>
                             {(il?.targetEnd || il?.startDate) && <span style={{fontSize:'0.65rem', color:'var(--primary)', marginTop:6, fontWeight:600}}>T: {fmtDate(il.targetEnd || il.startDate)}</span>}
                             {(il?.actualEnd || il?.endDate) && <span style={{fontSize:'0.65rem', color:'var(--green)', marginTop:2}}>A: {fmtDate(il.actualEnd || il.endDate)}</span>}
                           </div>
