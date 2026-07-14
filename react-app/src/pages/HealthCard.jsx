@@ -148,12 +148,14 @@ export default function HealthCard() {
           </div>
         </div>
 
-        <div style={{ fontSize: '0.65rem', color: '#475569', paddingLeft: 34 }}>
-          {counts.live > 0 && <div style={{ marginBottom: 2 }}><strong style={{color:'#166534'}}>{isStartup ? 'Pilot:' : 'Live:'}</strong> {counts.liveNames}</div>}
-          {counts.ongoing > 0 && <div><strong style={{color:'#b45309'}}>{isStartup ? 'Converted:' : 'Ongoing:'}</strong> {counts.ongoingNames}</div>}
+        <div style={{ display: 'flex', gap: 12, paddingLeft: 34 }}>
+          <div style={{ flex: 1, fontSize: '0.65rem', color: '#475569' }}>
+            {counts.live > 0 && <div style={{ marginBottom: 2 }}><strong style={{color:'#166534'}}>{isStartup ? 'Pilot:' : 'Live:'}</strong> {counts.liveNames}</div>}
+            {counts.ongoing > 0 && <div><strong style={{color:'#b45309'}}>{isStartup ? 'Converted:' : 'Ongoing:'}</strong> {counts.ongoingNames}</div>}
+          </div>
           
           {(editMode || data[dataKey]) && (
-            <div style={{ marginTop: 4 }}>
+            <div style={{ flex: 1, borderLeft: '1px solid #e2e8f0', paddingLeft: 12, marginTop: 4 }}>
               {editMode ? (
                 <textarea 
                   value={data[dataKey] || ''} 
@@ -296,9 +298,38 @@ export default function HealthCard() {
                     <div style={{ ...boxStyle, height: 140 }}>
                       <div style={boxTitle}>Investment Vs Savings</div>
                       {editMode ? (
-                        <textarea value={data.investmentNote || ''} onChange={e=>handleChange('investmentNote', e.target.value)} style={{ width: '100%', height: '70%', border: 'none', background: 'transparent', fontSize: '0.7rem', resize: 'none' }} placeholder="Note or tabular data..." />
+                        <div 
+                          style={{ height: 'calc(100% - 24px)', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', outline: 'none', position: 'relative', cursor: 'text' }}
+                          tabIndex={0}
+                          onPaste={e => {
+                            const items = e.clipboardData.items;
+                            for (let i = 0; i < items.length; i++) {
+                              if (items[i].type.indexOf('image') !== -1) {
+                                const blob = items[i].getAsFile();
+                                const reader = new FileReader();
+                                reader.onload = (ev) => handleChange('investmentImage', ev.target.result);
+                                reader.readAsDataURL(blob);
+                              }
+                            }
+                          }}
+                        >
+                          {data.investmentImage ? (
+                            <>
+                              <img src={data.investmentImage} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Preview" />
+                              <button onClick={() => handleChange('investmentImage', '')} style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, fontSize: '0.55rem', padding: '2px 6px', cursor: 'pointer' }}>X</button>
+                            </>
+                          ) : (
+                            <div style={{ fontSize: '0.65rem', color: '#64748b', textAlign: 'center' }}>Click here &<br/>Paste image (Ctrl+V)</div>
+                          )}
+                        </div>
                       ) : (
-                        <div style={{ fontSize: '0.7rem', whiteSpace: 'pre-wrap', color: '#334155' }}>{data.investmentNote || 'Chart data placeholder'}</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100% - 24px)' }}>
+                          {data.investmentImage ? (
+                            <img src={data.investmentImage} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Investment vs Savings" />
+                          ) : (
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>No image</div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
