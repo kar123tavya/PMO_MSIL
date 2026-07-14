@@ -28,14 +28,15 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       {/* Brand */}
-      <div className="sidebar-brand" style={{ position: 'relative' }}>
-        <img 
-          src="/maruti-logo.png" 
-          alt="Maruti Suzuki" 
-          className="brand-text"
-          style={{ height: '32px', width: 'auto', display: 'block' }} 
-        />
-        {collapsed && <div style={{ fontWeight: '800', color: 'var(--brand)', fontSize: '1.2rem' }}>MS</div>}
+      <div className="sidebar-brand" style={{ position: 'relative', minHeight: 48 }}>
+        {!collapsed && (
+          <img 
+            src="/maruti-logo.png" 
+            alt="Maruti Suzuki" 
+            className="brand-text"
+            style={{ height: '32px', width: 'auto', display: 'block' }} 
+          />
+        )}
       </div>
 
       {/* Nav */}
