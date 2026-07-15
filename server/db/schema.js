@@ -126,6 +126,7 @@ function initSchema() {
   try { db.exec("ALTER TABLE projects ADD COLUMN bu_email TEXT;"); } catch (e) {}
   try { db.exec("ALTER TABLE projects ADD COLUMN il4_learnings TEXT;"); } catch (e) {}
   try { db.exec("ALTER TABLE projects ADD COLUMN effort_scores TEXT DEFAULT '{}';"); } catch (e) {}
+  try { db.exec("ALTER TABLE notifications ADD COLUMN custom_data TEXT DEFAULT '{}';"); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS audit_log (
@@ -159,6 +160,7 @@ function initSchema() {
       changes_json TEXT,
       read_by      TEXT DEFAULT '[]',
       cleared_by   TEXT DEFAULT '[]',
+      custom_data  TEXT DEFAULT '{}',
       created_at   TEXT NOT NULL,
       updated_at   TEXT
     );
