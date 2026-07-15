@@ -36,10 +36,10 @@ export function AuthProvider({ children }) {
     if (!user) return false
     const PERMS = {
       admin:  ['view_all','add_project','delete_project','edit_core','update_phase','update_status','import','export','manage_users','view_history','assign_project','manage_settings'],
-      dpm:    ['view_all','add_project','edit_core','update_phase','update_status','export','manage_users','view_history'],
-      sic:    ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
-      tl:     ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
-      pic:    ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
+      dpm:    ['view_all','add_project','edit_core','update_phase','update_status','import','export','manage_users','view_history'],
+      sic:    ['view_all','add_project','edit_core','update_phase','update_status','import','export','view_history'],
+      tl:     ['view_all','add_project','edit_core','update_phase','update_status','import','export','view_history'],
+      pic:    ['view_all','add_project','edit_core','update_phase','update_status','import','export','view_history'],
       viewer: ['view_all','export'],
     }
     return (PERMS[user.role] || []).includes(action)
