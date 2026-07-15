@@ -155,9 +155,27 @@ export default function HealthCard() {
         </div>
 
         <div style={{ display: 'flex', gap: 12, paddingLeft: 34 }}>
-          <div style={{ flex: 1, fontSize: '0.65rem', color: '#475569' }}>
-            {counts.live > 0 && <div style={{ marginBottom: 2 }}><strong style={{color:'#166534'}}>{isStartup ? 'Pilot:' : 'Live:'}</strong> {counts.liveNames}</div>}
-            {counts.ongoing > 0 && <div><strong style={{color:'#b45309'}}>{isStartup ? 'Converted:' : 'Ongoing:'}</strong> {counts.ongoingNames}</div>}
+          <div style={{ flex: 1, fontSize: '0.65rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {(editMode || counts.live > 0 || data[dataKey+'_liveNames']) && (
+              <div>
+                <strong style={{color:'#166534'}}>{isStartup ? 'Pilot:' : 'Live:'}</strong>{' '}
+                {editMode ? (
+                  <input type="text" value={data[dataKey+'_liveNames'] !== undefined ? data[dataKey+'_liveNames'] : counts.liveNames} onChange={e=>handleChange(dataKey+'_liveNames', e.target.value)} style={{ width: '100%', background:'transparent', border: '1px solid #cbd5e1', borderRadius: 4, padding: '2px 4px', fontSize: '0.65rem' }} />
+                ) : (
+                  (data[dataKey+'_liveNames'] !== undefined ? data[dataKey+'_liveNames'] : counts.liveNames)
+                )}
+              </div>
+            )}
+            {(editMode || counts.ongoing > 0 || data[dataKey+'_ongoingNames']) && (
+              <div>
+                <strong style={{color:'#b45309'}}>{isStartup ? 'Converted:' : 'Ongoing:'}</strong>{' '}
+                {editMode ? (
+                  <input type="text" value={data[dataKey+'_ongoingNames'] !== undefined ? data[dataKey+'_ongoingNames'] : counts.ongoingNames} onChange={e=>handleChange(dataKey+'_ongoingNames', e.target.value)} style={{ width: '100%', background:'transparent', border: '1px solid #cbd5e1', borderRadius: 4, padding: '2px 4px', fontSize: '0.65rem' }} />
+                ) : (
+                  (data[dataKey+'_ongoingNames'] !== undefined ? data[dataKey+'_ongoingNames'] : counts.ongoingNames)
+                )}
+              </div>
+            )}
           </div>
           
           {(editMode || data[dataKey]) && (
