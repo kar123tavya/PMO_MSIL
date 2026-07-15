@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import api from '../utils/api'
+import api from '../api/client'
 
 export default function DpmPerformance() {
   const [projects, setProjects] = useState([])
