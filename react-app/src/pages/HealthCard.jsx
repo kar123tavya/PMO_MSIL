@@ -78,6 +78,7 @@ export default function HealthCard() {
   const flagshipLive = liveProjects.filter(p => p.flagship)
   const flagshipOngoing = ongoingProjects.filter(p => p.flagship)
   const allFlagships = [...flagshipLive, ...flagshipOngoing]
+  const defaultFlagshipsText = allFlagships.map((p, i) => `${i + 1}. ${p.project} [Target: ${p.actualEndDate || p.targetEndDate || 'TBD'}]`).join('\n')
 
   const totalUseCases = divProjects.reduce((sum, p) => sum + (parseInt(p.useCases) || 0), 0)
   const canEdit = can('manage_users') || (user?.division === activeDiv && ['pic', 'tl', 'sic', 'dpm'].includes(user?.role))
@@ -355,14 +356,18 @@ export default function HealthCard() {
                     <div style={{ ...boxStyle, borderColor: '#ef4444' }}>
                       <div style={{ ...boxTitle, color: '#b91c1c', borderColor: '#fca5a5' }}>🚩 Flagship Projects</div>
                       <div style={{ fontSize: '0.75rem', color: '#334155', padding: '0 8px' }}>
-                        <ol style={{ margin: 0, paddingLeft: 16 }}>
-                          {allFlagships.map((p, i) => (
-                            <li key={p._key} style={{ marginBottom: 6, fontWeight: 600 }}>
-                              {p.project} <span style={{ color: '#0ea5e9', fontWeight: 700 }}>[Target: {p.actualEndDate || p.targetEndDate || 'TBD'}]</span>
-                            </li>
-                          ))}
-                        </ol>
-                        {allFlagships.length === 0 && <span style={{ color: '#64748b' }}>None currently.</span>}
+                        {editMode ? (
+                          <textarea 
+                            value={data.flagshipsText !== undefined ? data.flagshipsText : defaultFlagshipsText} 
+                            onChange={e => handleChange('flagshipsText', e.target.value)} 
+                            style={{ width: '100%', minHeight: 120, border: '1px solid #fca5a5', background: 'transparent', fontSize: '0.75rem', resize: 'vertical', padding: 4 }} 
+                            placeholder="List flagship projects..." 
+                          />
+                        ) : (
+                          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                            {data.flagshipsText !== undefined ? data.flagshipsText : (defaultFlagshipsText || <span style={{ color: '#64748b' }}>None currently.</span>)}
+                          </div>
+                        )}
                       </div>
                     </div>
 
