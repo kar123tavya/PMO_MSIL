@@ -57,7 +57,7 @@ export default function Login() {
               <img 
                 src="/maruti-logo.png" 
                 alt="Maruti Suzuki" 
-                style={{ height: '50px', width: 'auto', display: 'block' }} 
+                style={{ height: '38px', width: 'auto', display: 'block' }} 
               />
             </div>
             <div style={{ fontSize:'.85rem', color:'var(--text-muted)', fontWeight: 500 }}>Project Monitoring Tool</div>

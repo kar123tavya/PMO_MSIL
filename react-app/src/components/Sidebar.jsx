@@ -63,6 +63,15 @@ export default function Sidebar() {
             <span style={{ flex: 1 }}>Users</span>
           </NavLink>
         )}
+        {user?.role === 'dpm' && (
+          <NavLink
+            to="/performance"
+            className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+          >
+            <span className="nav-icon">📊</span>
+            <span style={{ flex: 1 }}>Performance</span>
+          </NavLink>
+        )}
 
         <div className="divider" style={{ margin: '14px 0' }} />
         <div className="nav-section-label">Help</div>
