@@ -301,10 +301,10 @@ export default function HealthCard() {
                       <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#92400e', textTransform: 'uppercase', marginTop: 4 }}>Proactive Defect Detection</div>
                     </div>
 
-                    <div style={{ ...boxStyle, flex: 1, borderColor: '#818cf8', background: '#faf5ff' }}>
+                    <div style={{ ...boxStyle, borderColor: '#818cf8', background: '#faf5ff' }}>
                       <div style={{ ...boxTitle, color: '#4338ca', borderColor: '#c7d2fe' }}>🚀 Initiatives</div>
                       {editMode ? (
-                        <textarea value={data.initiatives || ''} onChange={e=>handleChange('initiatives', e.target.value)} style={{ width: '100%', height: '70%', border: 'none', background: 'transparent', fontSize: '0.75rem', resize: 'none' }} placeholder="List initiatives..." />
+                        <textarea value={data.initiatives || ''} onChange={e=>handleChange('initiatives', e.target.value)} style={{ width: '100%', minHeight: 80, border: 'none', background: 'transparent', fontSize: '0.75rem', resize: 'vertical' }} placeholder="List initiatives..." />
                       ) : (
                         <div style={{ fontSize: '0.75rem', whiteSpace: 'pre-wrap', color: '#334155', lineHeight: 1.5 }}>{data.initiatives || 'No initiatives recorded.'}</div>
                       )}
