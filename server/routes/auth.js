@@ -50,7 +50,7 @@ router.post('/register', async (req, res) => {
     const id = uuidv4();
     
     // Default role is pic if not provided or invalid
-    const validRoles = ['admin', 'department_head', 'division_head', 'section_head', 'pic'];
+    const validRoles = ['admin', 'dpm', 'sic', 'tl', 'pic', 'viewer'];
     const assignedRole = validRoles.includes(role) ? role : 'pic';
 
     db.prepare(`

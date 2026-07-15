@@ -548,8 +548,8 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
 
 // ── POST /api/projects/import ─────────────────────────
 router.post('/import', authMiddleware, upload.single('file'), (req, res) => {
-  if (!['senior_manager', 'section_head'].includes(req.user.role))
-    return res.status(403).json({ error: 'Only Senior Managers and Section Heads can import.' });
+  if (req.user.role === 'viewer')
+    return res.status(403).json({ error: 'Viewers cannot import.' });
 
   if (!req.file)
     return res.status(400).json({ error: 'No file uploaded.' });
@@ -563,6 +563,22 @@ router.post('/import', authMiddleware, upload.single('file'), (req, res) => {
       req.user.role, 
       req.user.uid
     );
+
+    // Send notification to higher ones
+    if (imported > 0) {
+       const adminRows = db.prepare("SELECT email FROM users WHERE role IN ('admin', 'dpm', 'sic', 'tl')").all();
+       const adminEmails = adminRows.map(r => r.email);
+       const notifId = uuidv4();
+       db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, cc_users, from_user, from_name, status, priority, created_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+       ).run(
+          notifId, 'general', 'Data Imported via Excel', 
+          `${req.user.name} (${req.user.role}) has successfully imported ${imported} projects via Excel upload.`, 
+          JSON.stringify(adminEmails), '[]', 
+          req.user.email, req.user.name, 'approved', 'normal', new Date().toISOString()
+       );
+       _broadcast('notification_new', { id: notifId, type: 'general', title: 'Data Imported via Excel', priority: 'normal', from_name: req.user.name });
+    }
 
     // Broadcast updated list
     const allRows = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();

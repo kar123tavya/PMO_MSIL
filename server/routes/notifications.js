@@ -17,10 +17,15 @@ let _broadcast = () => {};
 function setBroadcast(fn) { _broadcast = fn; }
 
 // ── Helper ──────────────────────────────────────────
+function isManagerOrAdmin(user) {
+  if (user.role === 'admin' || user.role === 'dpm') return true;
+  return false;
+}
+
 function userSees(n, user) {
   const toUsers = JSON.parse(n.to_users || '[]').map(e => (e || '').toLowerCase());
   const ccUsers = JSON.parse(n.cc_users || '[]').map(e => (e || '').toLowerCase());
-  if (user.role === 'admin' || user.role === 'department_head') return true;
+  if (isManagerOrAdmin(user)) return true;
   if ((n.from_user || '').toLowerCase() === (user.email || '').toLowerCase()) return true;
   if (toUsers.includes((user.email || '').toLowerCase()))  return true;
   if (ccUsers.includes((user.email || '').toLowerCase()))  return true;
@@ -147,7 +152,7 @@ router.patch('/:id', authMiddleware, (req, res) => {
       if (action === 'unread' && idx > -1) readBy.splice(idx, 1);
       db.prepare('UPDATE notifications SET read_by=?, updated_at=? WHERE id=?').run(JSON.stringify(readBy), now, n.id);
     } else if (action === 'approve' || action === 'reject') {
-      if (!['admin', 'department_head', 'division_head', 'section_head'].includes(req.user.role))
+      if (!['admin', 'dpm', 'sic', 'tl'].includes(req.user.role))
         return res.status(403).json({ error: 'Insufficient permissions to approve/reject.' });
       
       const newStatus = action === 'approve' ? 'approved' : 'rejected';
@@ -187,7 +192,7 @@ router.patch('/:id', authMiddleware, (req, res) => {
 // ── DELETE /api/notifications/:id ────────────────────
 router.delete('/:id', authMiddleware, (req, res) => {
   try {
-    if (!['admin', 'department_head', 'division_head'].includes(req.user.role))
+    if (!['admin', 'dpm', 'sic'].includes(req.user.role))
       return res.status(403).json({ error: 'Insufficient permissions to delete notifications.' });
     db.prepare('DELETE FROM notifications WHERE id=?').run(req.params.id);
     res.json({ deleted: true });
