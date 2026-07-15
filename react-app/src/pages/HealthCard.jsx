@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 import html2canvas from 'html2canvas'
 import pptxgen from 'pptxgenjs'
+import { calculateProjectProgress } from '../utils/progressCalc'
 
 const DIVISIONS = ['MQ', 'ND', 'PQ-MP', 'PQ-NPD', 'COP', 'PDS', 'VI', 'VU', 'MA', 'VQ']
 
@@ -62,11 +63,15 @@ export default function HealthCard() {
   
   const getCounts = (filterFn) => {
     const pList = divProjects.filter(filterFn)
+    const red = pList.filter(p => calculateProjectProgress(p) < 50).length
+    const yellow = pList.filter(p => calculateProjectProgress(p) >= 50 && calculateProjectProgress(p) < 80).length
+    const green = pList.filter(p => calculateProjectProgress(p) >= 80).length
     return {
       live: pList.filter(p => p.status === 'Live').length,
       ongoing: pList.filter(p => p.status !== 'Live' && p.status !== 'Cancelled' && p.status !== 'On Hold').length,
       liveNames: pList.filter(p => p.status === 'Live').map(p => p.project).join(', '),
-      ongoingNames: pList.filter(p => p.status !== 'Live' && p.status !== 'Cancelled' && p.status !== 'On Hold').map(p => p.project).join(', ')
+      ongoingNames: pList.filter(p => p.status !== 'Live' && p.status !== 'Cancelled' && p.status !== 'On Hold').map(p => p.project).join(', '),
+      red, yellow, green
     }
   }
 
@@ -135,14 +140,14 @@ export default function HealthCard() {
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b' }}>{isStartup ? 'PILOT' : 'LIVE'}</span>
-              <div style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800 }}>
-                {counts.live}
+              <div style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, width: 28, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800 }}>
+                {editMode ? <input type="number" value={data[dataKey+'_live'] !== undefined ? data[dataKey+'_live'] : counts.live} onChange={e=>handleChange(dataKey+'_live', parseInt(e.target.value)||0)} style={{ width: '100%', height: '100%', background:'transparent', border: 'none', textAlign: 'center', fontSize: '0.85rem', fontWeight: 800, color: '#1d4ed8' }}/> : (data[dataKey+'_live'] !== undefined ? data[dataKey+'_live'] : counts.live)}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b' }}>{isStartup ? 'CONVERTED' : 'ONGOING'}</span>
-              <div style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', borderRadius: 4, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800 }}>
-                {counts.ongoing}
+              <div style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', borderRadius: 4, width: 28, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800 }}>
+                {editMode ? <input type="number" value={data[dataKey+'_ongoing'] !== undefined ? data[dataKey+'_ongoing'] : counts.ongoing} onChange={e=>handleChange(dataKey+'_ongoing', parseInt(e.target.value)||0)} style={{ width: '100%', height: '100%', background:'transparent', border: 'none', textAlign: 'center', fontSize: '0.85rem', fontWeight: 800, color: '#b45309' }}/> : (data[dataKey+'_ongoing'] !== undefined ? data[dataKey+'_ongoing'] : counts.ongoing)}
               </div>
             </div>
           </div>
@@ -172,17 +177,18 @@ export default function HealthCard() {
           )}
         </div>
         
-        {/* Usage Progress Bar Mockup */}
-        <div style={{ paddingLeft: 34, marginTop: 4 }}>
-          <div style={{ display: 'flex', fontSize: '0.55rem', fontWeight: 700, color: '#94a3b8', gap: 2, marginBottom: 2 }}>
-            <div style={{ flex: 1 }}>{'<50%'}</div>
-            <div style={{ flex: 1, textAlign: 'center' }}>{'50-80%'}</div>
-            <div style={{ flex: 1, textAlign: 'right' }}>{'>80%'}</div>
+        <div style={{ paddingLeft: 34, marginTop: 4, display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 800 }}>
+             <span style={{ marginRight: 4 }}>🔴 &lt;50%:</span>
+             {editMode ? <input type="number" value={data[dataKey+'_red'] !== undefined ? data[dataKey+'_red'] : counts.red} onChange={e=>handleChange(dataKey+'_red', parseInt(e.target.value)||0)} style={{ width: 24, textAlign: 'center', background:'transparent', border: 'none', color: '#b91c1c', fontWeight: 800 }}/> : (data[dataKey+'_red'] !== undefined ? data[dataKey+'_red'] : counts.red)}
           </div>
-          <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', background: '#e2e8f0' }}>
-            <div style={{ flex: 1, background: '#ef4444', opacity: 0.8 }}></div>
-            <div style={{ flex: 1, background: '#eab308', opacity: 0.8 }}></div>
-            <div style={{ flex: 1, background: '#22c55e', opacity: 0.8 }}></div>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#fef9c3', color: '#a16207', padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 800 }}>
+             <span style={{ marginRight: 4 }}>🟡 50-80%:</span>
+             {editMode ? <input type="number" value={data[dataKey+'_yellow'] !== undefined ? data[dataKey+'_yellow'] : counts.yellow} onChange={e=>handleChange(dataKey+'_yellow', parseInt(e.target.value)||0)} style={{ width: 24, textAlign: 'center', background:'transparent', border: 'none', color: '#a16207', fontWeight: 800 }}/> : (data[dataKey+'_yellow'] !== undefined ? data[dataKey+'_yellow'] : counts.yellow)}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 800 }}>
+             <span style={{ marginRight: 4 }}>🟢 &gt;80%:</span>
+             {editMode ? <input type="number" value={data[dataKey+'_green'] !== undefined ? data[dataKey+'_green'] : counts.green} onChange={e=>handleChange(dataKey+'_green', parseInt(e.target.value)||0)} style={{ width: 24, textAlign: 'center', background:'transparent', border: 'none', color: '#15803d', fontWeight: 800 }}/> : (data[dataKey+'_green'] !== undefined ? data[dataKey+'_green'] : counts.green)}
           </div>
         </div>
       </div>
@@ -234,7 +240,11 @@ export default function HealthCard() {
                   </div>
                   <div style={{ display: 'flex', gap: 16 }}>
                     <div style={{ background: '#334155', borderRadius: 8, padding: '12px 24px', textAlign: 'center', minWidth: 160 }}>
-                      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#38bdf8', lineHeight: 1 }}>{liveProjects.length}</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#38bdf8', lineHeight: 1 }}>
+                        {editMode ? (
+                           <input type="number" value={data.totalLive !== undefined ? data.totalLive : liveProjects.length} onChange={e=>handleChange('totalLive', parseInt(e.target.value)||0)} style={{ width: 60, textAlign:'center', background:'transparent', color:'#38bdf8', border:'1px solid #475569', fontSize:'1.8rem', fontWeight: 800 }} />
+                        ) : (data.totalLive !== undefined ? data.totalLive : liveProjects.length)}
+                      </div>
                       <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginTop: 4, color: '#e2e8f0' }}>Total Live Projects</div>
                     </div>
                     <div style={{ background: '#334155', borderRadius: 8, padding: '12px 24px', textAlign: 'center', minWidth: 160 }}>
@@ -252,7 +262,7 @@ export default function HealthCard() {
                 <div style={{ display: 'flex', gap: 16, padding: '16px 20px' }}>
                   
                   {/* LEFT COLUMN: Categories */}
-                  <div style={{ flex: '0 0 45%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ flex: '0 0 43%', display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ textAlign: 'center', fontWeight: 800, color: '#334155', letterSpacing: 1, paddingBottom: 4, fontSize: '0.9rem' }}>CURRENT STATUS</div>
                     
                     {renderCategoryRow('AI & Gen AI', '🧠', p => p.category === 'GenAI', false, 'statusAiGenai')}
@@ -263,12 +273,16 @@ export default function HealthCard() {
                   </div>
 
                   {/* CENTER COLUMN: Benefits */}
-                  <div style={{ flex: '0 0 25%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ flex: '0 0 35%', display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ textAlign: 'center', fontWeight: 800, color: '#334155', letterSpacing: 1, paddingBottom: 4, fontSize: '0.9rem' }}>BENEFITS</div>
                     
                     <div style={{ display: 'flex', gap: 10 }}>
                       <div style={{ flex: 1, ...boxStyle, textAlign: 'center', padding: '12px 4px', background: '#f0fdfa', borderColor: '#14b8a6' }}>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f766e', lineHeight: 1 }}>{totalUseCases}</div>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f766e', lineHeight: 1 }}>
+                          {editMode ? (
+                            <input type="number" value={data.totalUseCases !== undefined ? data.totalUseCases : totalUseCases} onChange={e=>handleChange('totalUseCases', parseInt(e.target.value)||0)} style={{ width: '80%', textAlign:'center', background:'transparent', color:'#0f766e', border:'1px solid #475569', fontSize:'1.6rem', fontWeight: 800 }} />
+                          ) : (data.totalUseCases !== undefined ? data.totalUseCases : totalUseCases)}
+                        </div>
                         <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f766e', textTransform: 'uppercase', marginTop: 4 }}>Use Cases</div>
                       </div>
                       <div style={{ flex: 1, ...boxStyle, textAlign: 'center', padding: '12px 4px', background: '#f0fdf4', borderColor: '#22c55e' }}>
