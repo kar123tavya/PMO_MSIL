@@ -408,7 +408,6 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
     parent_code=?, project=?, theme=?, division=?, status=?, category=?, fy=?,
     live_target=?, live_actual=?, manhours=?, direct_cost=?, proactive_defect=?, use_cases=?,
     flagship=?, mis=?, critical=?, third_party=?, overall_status=?,
-    flagship=?, mis=?, critical=?, third_party=?, overall_status=?,
     il_phases=?, phases=?, custom_data=?, assigned_to=?, assigned_staff_id=?,
     bu_email=?, il4_learnings=?, effort_scores=?,
     updated_at=?, updated_by=?
