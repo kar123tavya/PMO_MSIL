@@ -100,12 +100,13 @@ export default function AppTutorial() {
   ];
 
   const handleJoyrideCallback = (data) => {
-    const { status, type } = data;
-    // Stop tour on: finished, skipped, error, close button clicked, or overlay clicked
+    const { status, type, action } = data;
     if (
       [STATUS.FINISHED, STATUS.SKIPPED].includes(status) ||
       status === STATUS.ERROR ||
       type === EVENTS.TOUR_END ||
+      action === 'close' || 
+      action === 'skip' ||
       type === EVENTS.TARGET_NOT_FOUND
     ) {
       setRun(false);

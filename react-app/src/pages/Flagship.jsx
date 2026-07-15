@@ -215,7 +215,7 @@ export default function Flagship() {
                   <th style={{width:130, background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)'}}>Division</th>
                   <th style={{background:'#1e3a8a', color:'#fff', width:110, borderRight:'1px solid rgba(255,255,255,0.2)', textAlign:'center'}}>3rd Party Req</th>
                   {customCols.map(c=><th key={c.id} style={{background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)'}}>{c.label}</th>)}
-                  {IL_LBL.map(l=><th key={l} style={{width:130,textAlign:'center', background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)'}}>{l==='UAT (+ Cybersecurity)' ? 'UAT (+Cybersecurity)' : l}</th>)}
+                  {IL_LBL.map(l=><th key={l} style={{width:130,textAlign:'center', background:'#1e3a8a', color:'#fff', borderRight:'1px solid rgba(255,255,255,0.2)', fontSize:'0.75rem', whiteSpace: 'normal', wordWrap: 'break-word'}}>{l==='UAT (+ Cybersecurity)' ? 'UAT (+Cybersecurity)' : (l === 'Design & Development' ? 'Design & Dev' : l)}</th>)}
                   <th style={{width:150, background:'#1e3a8a', color:'#fff'}}>Status<br/><small>(As on date)</small></th>
                 </tr>
               </thead>
