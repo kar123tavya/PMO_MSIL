@@ -199,7 +199,7 @@ function initSchema() {
     db.prepare(`
       INSERT INTO users (id, name, email, password_hash, role, status, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(uuidv4(), 'Administrator', 'admin@maruti.co.in', hash, 'senior_manager', 'active', new Date().toISOString());
+    `).run(uuidv4(), 'Administrator', 'admin@maruti.co.in', hash, 'admin', 'active', new Date().toISOString());
     console.log('[PMO DB] Seeded admin — email: admin@maruti.co.in  password: admin123');
   }
 
