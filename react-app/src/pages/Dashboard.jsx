@@ -56,7 +56,7 @@ export default function Dashboard() {
   const { showToast }= useToast()
 
   const [search,  setSearch]  = useState('')
-  const [divF,    setDivF]    = useState(user?.role === 'pic' ? (user?.division || '') : '')
+  const [divF,    setDivF]    = useState(user?.role !== 'admin' ? (user?.division || '') : '')
   const [catF,    setCatF]    = useState('')
   const [fyF,     setFyF]     = useState('')
   const [stF,     setStF]     = useState('')

@@ -33,8 +33,7 @@ export default function TasksList() {
   // --- Generate Synthetic Deadline Alerts ---
   const today = new Date(); today.setHours(0,0,0,0);
   const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() + 14);
-  const isSM = user?.role === 'admin' || user?.role === 'department_head' || user?.role === 'division_head' || user?.role === 'section_head';
-  
+  const isSM = ['admin', 'dpm', 'sic', 'tl'].includes(user?.role);
   const deadlineAlerts = (projects || []).filter(p => {
     if (!isSM && p.division !== user?.division) return false;
     if (!p.liveTarget) return false;

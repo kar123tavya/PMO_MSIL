@@ -34,7 +34,7 @@ export default function Flagship() {
 
   const [search, setSearch] = useState('')
   const [filterTheme, setFilterTheme] = useState('')
-  const [filterDiv, setFilterDiv] = useState(user?.role === 'pic' ? (user?.division || '') : '')
+  const [filterDiv, setFilterDiv] = useState('')
   
   const [modal,   setModal]   = useState(false)
   const [editing, setEditing] = useState(null)
