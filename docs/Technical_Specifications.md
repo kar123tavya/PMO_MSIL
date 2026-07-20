@@ -1,55 +1,82 @@
 # Technical Specifications: PMO Dashboard & QA Project Monitoring
 
 ## 1. System Overview
-The PMO Dashboard is a full-stack, real-time web application tailored for the MSIL QA Vertical. It facilitates the end-to-end monitoring of projects, from ideation to Go-Live, utilizing interactive matrices, dynamic Gantt charts, and health cards.
+The PMO Dashboard is a complete web application built specifically for the Maruti Suzuki QA Vertical. It is designed to track projects from their initial idea all the way to completion. 
 
-## 2. Technology Stack
-### Frontend
-* **Framework:** React 18 (Bootstrapped with Vite)
-* **Routing:** React Router v6
-* **State Management:** React Context API (`AuthContext`, `ProjectContext`, `NotificationContext`, `ToastContext`)
-* **Styling:** Custom vanilla CSS (`index.css`) with responsive CSS Variables, Glassmorphism elements, and CSS Grids.
-* **Icons:** Geometric unicode symbols and custom SVG assets.
-* **Build Tool:** Vite (ES modules, optimized rollup bundler).
+The main goal of this system is to **replace manual Excel tracking** with an automated, real-time dashboard where everyone (Admins, DPMs, and PICs) can see the exact same data instantly.
 
-### Backend
-* **Runtime:** Node.js v18+
-* **Framework:** Express.js
-* **Database:** SQLite3 (via `node-sqlite3-wasm`)
-  * Configured in **WAL mode** (Write-Ahead Logging) for high concurrency.
-* **Authentication:** JSON Web Tokens (JWT) & bcryptjs for password hashing.
-* **Real-time Engine:** Server-Sent Events (SSE) native implementation for low-latency broadcasting without WebSocket overhead.
-* **Job Scheduler:** `node-cron` for automated tasks.
-* **File Processing:** `xlsx` library for robust Excel parsing and buffer generation.
+---
 
-## 3. Architecture & Data Flow
-The system follows a monolithic client-server architecture designed for simple intranet deployment.
+## 2. Architecture Diagram
 
-### 3.1 Server-Sent Events (SSE)
-Instead of polling the database, the frontend connects to the `GET /api/events` endpoint. 
-When any client updates a project via `PUT /api/projects/:id`, the backend immediately fires `_broadcast('projects_changed', ...)` which pushes the new payload to all active clients via SSE, ensuring 100% synchronization across the QA department instantly.
+The application uses a modern "Client-Server" architecture. Below is a visual representation of how the different parts of the system communicate with each other:
 
-### 3.2 Database Schema
-Located in `server/db/schema.js`, the relational schema contains:
-* `users`: Stores RBAC profiles (admin, dpm, sic, tl, pic, viewer).
-* `projects`: The core table containing 15+ properties (IL status, theme, division, RAG status).
-* `audit_log`: Tracks atomic changes (field-level delta tracking).
-* `notifications`: In-app alert queue.
-* `history`: Weekly/Monthly statistical snapshots for trend analysis.
+```mermaid
+flowchart TD
+    %% Define Styles
+    classDef frontend fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
+    classDef backend fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+    classDef database fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
 
-## 4. Key Components
-* **Dashboard (`Dashboard.jsx`)**: A highly filtered, multi-view matrix supporting dynamic dropdown insertions and global search.
-* **Flagship (`Flagship.jsx`)**: Specialized filtered view for critical high-value projects.
-* **Gantt Chart (`Gantt.jsx`)**: Automated timeline generator computing visual widths based on start/end dates.
-* **Health Card (`HealthCard.jsx`)**: Aggregated statistical view showing RAG (Red, Amber, Green) status and dynamic calculations.
-* **PIC Tracker (`PicStaleness.jsx`)**: Algorithmic heatmap that calculates delta-time to surface neglected projects securely mapped to individual PICs.
+    %% Nodes
+    User(("🧑‍💻 Users\n(Admins, PICs, DPMs)"))
+    
+    subgraph ClientSide ["Frontend (User's Browser)"]
+        ReactApp["⚛️ React Application\n(Dashboard, Gantt, PIC Tracker)"]:::frontend
+    end
 
-## 5. Security Protocols
-* **RBAC (Role-Based Access Control):** Granular permissions. Only Admins/DPMs can edit users. PICs can only edit projects they are assigned to or have division rights over.
-* **Password Security:** Salted and hashed via bcrypt before DB insertion.
-* **Token Expiration:** JWT payloads expire securely after 12 hours.
+    subgraph ServerSide ["Backend (Company Server)"]
+        Express["⚙️ Node.js / Express Server\n(API & Logic)"]:::backend
+        SSE["📡 Real-Time Broadcaster\n(Server-Sent Events)"]:::backend
+    end
 
-## 6. Deployment Environment
-* **Platform:** Windows OS / Local Intranet Server
-* **Execution:** Run via `node server.js`
-* **Static Assets:** The production React build (`react-app/dist`) is served statically by Express, eliminating the need for a separate frontend server in production.
+    subgraph Storage ["Data Layer"]
+        SQLite[("🗄️ SQLite Database\n(Projects, Users, Audit Log)")]:::database
+        Excel["📊 Master Excel File\n(For Import/Export)"]:::database
+    end
+
+    %% Connections
+    User <--> |Clicks & Views| ReactApp
+    ReactApp <--> |"REST API (Save/Fetch Data)"| Express
+    Express --> |"Saves Data"| SQLite
+    SQLite --> |"Reads Data"| Express
+    
+    %% Real-time flow
+    Express --> |"Triggers Update"| SSE
+    SSE -.-> |"Pushes Live Updates"| ReactApp
+    
+    %% Excel
+    Express <--> |"Parses & Generates"| Excel
+```
+
+---
+
+## 3. How the Layers Work (Easier to Understand)
+
+### 3.1 The Frontend (What the user sees)
+* **Built with React:** The user interface is built using React. This means the page doesn't need to refresh when you click around; it feels as fast and smooth as a desktop app.
+* **Offline Ready Packaging:** The frontend is "compiled" via a tool called Vite into a `dist` folder. Because of this, the server doesn't need external internet to run the UI—everything is bundled locally.
+
+### 3.2 The Backend (The brain of the system)
+* **Node.js & Express:** This is the server program that listens for requests (like "Save this project" or "Add this user").
+* **Live Updates (SSE):** Instead of forcing the user to press the refresh button, the server uses a technology called **Server-Sent Events (SSE)**. If one PIC saves a project, the server instantly beams that update to every other manager's screen in less than a second.
+
+### 3.3 The Database (Where data lives)
+* **SQLite:** A lightweight, highly reliable database that lives in a single file (`pmo_data.db`). 
+* **WAL Mode:** We configured the database to use "Write-Ahead Logging". In simple terms, this prevents traffic jams. It allows multiple PICs to read and write to the dashboard at the exact same time without crashing or locking the file.
+
+---
+
+## 4. Key Features & How They Are Built
+
+1. **Dashboard & Flagship Views:** Uses intelligent React filtering to instantly sort hundreds of projects without slowing down the computer.
+2. **Gantt Chart Timeline:** The system automatically reads the `start_date` and `end_date` of a project, does math in the background, and draws visual progress bars for the schedule.
+3. **PIC Staleness Heatmap:** The server secretly records the `updated_at` time every time a project is saved. The PIC Tracker page simply calculates the days between "Today" and that saved date, turning the row Red if it has been neglected for too long.
+4. **Excel Import/Export:** Uses the `xlsx` library to read uploaded Excel spreadsheets, automatically translating the rows into Database entries.
+
+---
+
+## 5. Security & Privacy
+* **Role-Based Access (RBAC):** The system knows who is logged in. A regular PIC cannot delete users or change other people's passwords, whereas an Admin has full control.
+* **Encrypted Passwords:** Passwords are not saved as plain text. They are scrambled using a cryptographic algorithm called `bcryptjs`. Even if someone steals the database file, they cannot read the passwords.
+* **Audit Logging:** Every single edit is permanently recorded in the database. The system tracks *Who* made the change, *When*, and exactly *What* value was modified.
