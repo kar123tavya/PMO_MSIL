@@ -8,6 +8,7 @@ const NAV = [
   { to: '/flagship',    label: 'Flagship Projects', icon: '◈', end: false },
   { to: '/gantt',       label: 'Gantt Chart',       icon: '▤', end: false },
   { to: '/healthcard',  label: 'Health Card',       icon: '🏥', end: false },
+  { to: '/pic-tracker', label: 'PIC Tracker',       icon: '🔥', end: false },
   { to: '/audit',       label: 'Audit Log',         icon: '📋', end: false },
 ]
 
