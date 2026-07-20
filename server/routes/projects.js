@@ -125,6 +125,41 @@ router.get('/export', authMiddleware, (req, res) => {
   }
 });
 
+router.get('/dummy-staleness', (req, res) => {
+  const today = new Date();
+  const dates = [
+    new Date(today.getTime() - (5 * 24 * 60 * 60 * 1000)),
+    new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)),
+    new Date(today.getTime() - (80 * 24 * 60 * 60 * 1000)),
+  ];
+  const fakePics = [
+    { name: 'John Doe', email: 'john@maruti.co.in' },
+    { name: 'Jane Smith', email: 'jane@maruti.co.in' },
+    { name: 'Ravi Kumar', email: 'ravi@maruti.co.in' }
+  ];
+
+  fakePics.forEach(pic => {
+    try {
+      db.prepare(`INSERT INTO users (id, name, email, password_hash, role, status, created_at, updated_at) 
+                  VALUES (?, ?, ?, 'hash', 'pic', 'approved', ?, ?)`
+      ).run(uuidv4(), pic.name, pic.email, today.toISOString(), today.toISOString());
+    } catch (e) {}
+  });
+
+  for (let i = 0; i < 9; i++) {
+    const pic = fakePics[i % 3].email;
+    const date = dates[(i + Math.floor(i / 3)) % 3].toISOString();
+    db.prepare(`
+      INSERT INTO projects (
+        id, project, assigned_to, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(uuidv4(), `Sample Heatmap Project ${i + 1}`, pic, 'IL2', date, date);
+  }
+  
+  _broadcast('projects_changed', getAllRows());
+  res.json({ message: 'Dummy data injected! Refresh your browser.' });
+});
+
 router.get('/fixdb', (req, res) => {
   const rows = db.prepare('SELECT id, to_users, cc_users, from_user FROM notifications').all();
   let count = 0;
