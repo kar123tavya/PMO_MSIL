@@ -5,7 +5,7 @@ import { useProjects } from '../context/ProjectContext'
 import api from '../api/client'
 
 const DIVS  = ['MQ', 'ND', 'PQ-MP', 'PQ-NPD', 'COP', 'PDS', 'VI', 'VU', 'MA', 'VQ']
-const THEMES= ['Efficiency improvement', 'Enterprise Level', 'AI in business', 'Multilocation control', 'Startup collaboration for technology adoption']
+const THEMES= ['Efficiency improvement', 'Enterprise Level', 'Multilocation control', 'Startup collaboration for technology adoption']
 const CATS  = ['Analytics & Digital', 'Bots', 'Dashboard', 'GenAI', 'PowerApps & Portal']
 const FYS   = ['2023-24','2024-25','2025-26','2026-27','2027-28']
 const STATS = ['IL1','IL2','IL3','IL4','IL5','Live','On Hold','Cancelled']
