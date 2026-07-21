@@ -94,6 +94,36 @@ router.put('/:id/approve', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+/* PUT /api/users/profile - Self profile update */
+router.put('/profile', authMiddleware, (req, res) => {
+  const { email, password } = req.body;
+  const uid = req.user.uid;
+  
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'Email cannot be empty.' });
+  }
+
+  // Check if email belongs to someone else
+  const existing = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email.trim().toLowerCase(), uid);
+  if (existing) {
+    return res.status(409).json({ error: 'Email is already in use by another account.' });
+  }
+
+  const now = new Date().toISOString();
+  let updateQuery = `UPDATE users SET email=?, updated_at=? WHERE id=?`;
+  let params = [email.trim().toLowerCase(), now, uid];
+
+  if (password && password.trim()) {
+    const hash = bcrypt.hashSync(password.trim(), 10);
+    updateQuery = `UPDATE users SET email=?, password_hash=?, updated_at=? WHERE id=?`;
+    params = [email.trim().toLowerCase(), hash, now, uid];
+  }
+
+  db.prepare(updateQuery).run(...params);
+  _broadcast('users_changed', null);
+  res.json({ ok: true, message: 'Profile updated successfully.' });
+});
+
 /* DELETE /api/users/:id */
 router.delete('/:id', authMiddleware, (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'dpm') return res.status(403).json({ error: 'Forbidden.' });

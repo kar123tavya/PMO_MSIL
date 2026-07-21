@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
+import ProfileModal from './ProfileModal'
 
 const NAV = [
   { to: '/',            label: 'Dashboard',         icon: '▦', end: true },
@@ -17,6 +18,7 @@ export default function Sidebar() {
   const { count } = useNotifications()
 
   const [collapsed, setCollapsed] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
 
   useEffect(() => {
     if (collapsed) {
@@ -98,10 +100,22 @@ export default function Sidebar() {
         <div className="user-avatar">{(user?.name || 'U')[0].toUpperCase()}</div>
         <div className="user-info">
           <div className="user-name">{user?.name || 'User'}</div>
-          <div className="user-role">{getRoleLabel ? getRoleLabel(user?.role) : user?.role}</div>
+          <div className="user-role" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{getRoleLabel(user?.role)}</span>
+            <button 
+              onClick={() => setShowProfile(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+            >
+              Edit Profile
+            </button>
+          </div>
         </div>
-        <button className="logout-btn" onClick={logout} title="Sign out">⏻</button>
+        <button className="logout-btn" onClick={logout} title="Logout">
+          🚪
+        </button>
       </div>
+
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </aside>
   )
 }
