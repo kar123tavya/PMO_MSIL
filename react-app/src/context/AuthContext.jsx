@@ -32,6 +32,20 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  const updateProfileContext = useCallback((updates) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const newUser = { ...prev, ...updates }
+      const s = sessionStorage.getItem('pmo_session')
+      if (s) {
+        const parsed = JSON.parse(s)
+        parsed.user = newUser
+        sessionStorage.setItem('pmo_session', JSON.stringify(parsed))
+      }
+      return newUser
+    })
+  }, [])
+
   const can = useCallback((action) => {
     if (!user) return false
     const PERMS = {
@@ -57,7 +71,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, can, getRoleLabel }}>
+    <AuthContext.Provider value={{ user, login, logout, can, getRoleLabel, updateProfileContext }}>
       {children}
     </AuthContext.Provider>
   )

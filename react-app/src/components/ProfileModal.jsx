@@ -4,7 +4,7 @@ import { useToast } from '../context/ToastContext'
 import api from '../api/client'
 
 export default function ProfileModal({ onClose }) {
-  const { user, logout } = useAuth()
+  const { user, updateProfileContext } = useAuth()
   const toast = useToast()
   
   const [name, setName] = useState(user?.name || '')
@@ -44,12 +44,9 @@ export default function ProfileModal({ onClose }) {
     setLoading(true)
     try {
       await api.put('/users/profile', { name, email, staffNo, password, photo_base64: photo })
-      toast.show('Profile updated successfully! Please log in again.', 'success')
-      
-      // Force user to login again since their token payload might be outdated or they changed password
-      setTimeout(() => {
-        logout()
-      }, 1500)
+      updateProfileContext({ name, email, staffNo, photo_base64: photo })
+      toast.show('Profile updated successfully!', 'success')
+      onClose()
     } catch (err) {
       toast.show(err.response?.data?.error || 'Failed to update profile.', 'error')
     } finally {
