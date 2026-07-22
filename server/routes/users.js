@@ -22,6 +22,7 @@ function rowToUser(row) {
     staffNo:     row.staff_no,
     designation: row.designation,
     manager_email: row.manager_email,
+    status:      row.status,
     photo_base64:  row.photo_base64,
     createdAt:   row.created_at,
   };

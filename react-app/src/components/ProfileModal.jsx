@@ -59,7 +59,7 @@ export default function ProfileModal({ onClose }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: 400 }}>
+      <div className="modal-content" style={{ maxWidth: 400, maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 style={{ marginBottom: 16 }}>My Profile Settings</h2>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
