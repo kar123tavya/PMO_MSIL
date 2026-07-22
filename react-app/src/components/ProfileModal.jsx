@@ -16,35 +16,20 @@ export default function ProfileModal({ onClose }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Compress image helper
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0]
     if (!file) return
 
+    // Ensure it's an image
+    if (!file.type.startsWith('image/')) {
+      toast.show('Please select a valid image file.', 'error')
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (ev) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const MAX_WIDTH = 250
-        const MAX_HEIGHT = 250
-        let width = img.width
-        let height = img.height
-
-        if (width > height) {
-          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH }
-        } else {
-          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT }
-        }
-
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8)
-        setPhoto(compressedBase64)
-      }
-      img.src = ev.target.result
+      // Just save the raw base64 string. The server limit is 10MB.
+      setPhoto(ev.target.result)
     }
     reader.readAsDataURL(file)
   }

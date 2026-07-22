@@ -581,7 +581,10 @@ export default function Gantt() {
             <div className="modal-footer" style={{marginTop:20,display:'flex',justifyContent:'flex-end',gap:10}}>
               <button className="btn btn-ghost" onClick={()=>setShowExportModal(false)}>Cancel</button>
               <div className="header-actions">
-                <button className="btn btn-primary" onClick={handleExportPPT}>Export PPTX</button>
+                <button className="btn btn-primary" onClick={downloadScreenshot} disabled={!exportProjKey||exporting}>
+                  {exporting ? 'Generating...' : 'Export Snapshot'}
+                </button>
+                <button className="btn btn-secondary" style={{marginLeft: 8}} onClick={handleExportPPT}>Export PPTX</button>
                 <button className="btn btn-secondary" style={{marginLeft: 8}} onClick={handleExportExcel}>Export Excel</button>
               </div>
             </div>

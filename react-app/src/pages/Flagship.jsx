@@ -234,7 +234,10 @@ export default function Flagship() {
       <div className="app-main">
         <Header title="Flagship Projects" searchValue={search} onSearch={setSearch}>
           <div className="header-actions">
-            <button className="btn btn-primary" onClick={handleExportPPT}>Export PPTX</button>
+            <button className="btn btn-secondary" onClick={handleExportImage} disabled={exporting}>
+              {exporting ? 'Exporting...' : '📷 Export Snapshot'}
+            </button>
+            <button className="btn btn-primary" style={{marginLeft: 8}} onClick={handleExportPPT}>Export PPTX</button>
             <button className="btn btn-secondary" style={{marginLeft: 8}} onClick={handleExportExcel}>Export Excel</button>
           </div>
           <button className="btn btn-ghost" onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
