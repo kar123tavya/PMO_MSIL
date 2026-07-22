@@ -125,7 +125,18 @@ export default function Users() {
                   <tbody>
                     {users.map(u => (
                       <tr key={u.uid}>
-                        <td style={{fontWeight: 600}}>{u.name} {u.uid === user.uid && <span className="stage-tag" style={{marginLeft: 8}}>You</span>}</td>
+                        <td style={{fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10}}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                            {u.photo_base64 ? (
+                              <img src={u.photo_base64} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              (u.name || 'U')[0].toUpperCase()
+                            )}
+                          </div>
+                          <div>
+                            {u.name} {u.uid === user.uid && <span className="stage-tag" style={{marginLeft: 8}}>You</span>}
+                          </div>
+                        </td>
                         <td style={{fontSize: '0.85rem'}}>{u.email}</td>
                         <td style={{fontSize: '0.85rem'}}>{u.staffNo || '—'} / {u.designation || '—'}</td>
                         <td>

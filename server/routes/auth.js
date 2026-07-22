@@ -36,7 +36,7 @@ router.post('/login', (req, res) => {
   };
 
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
-  res.json({ token, user: payload });
+  res.json({ token, user: { ...payload, photo_base64: user.photo_base64 || null } });
 });
 
 /* POST /api/auth/register */
