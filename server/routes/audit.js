@@ -39,9 +39,8 @@ router.get('/', authMiddleware, (req, res) => {
 // ── GET /api/audit/export ─────────────────────────────
 router.get('/export', authMiddleware, (req, res) => {
   try {
-    if (!['admin', 'senior_manager'].includes(req.user.role))
-      return res.status(403).json({ error: 'Only Admins can export audit logs.' });
-
+    // Allowed for all authenticated users; authMiddleware ensures they are logged in.
+    
     const rows = db.prepare('SELECT * FROM audit_log ORDER BY timestamp DESC').all();
     const data = [
       ['Timestamp', 'Project', 'Action', 'User', 'Role', 'Field Changed', 'From', 'To'],

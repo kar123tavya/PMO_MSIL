@@ -55,6 +55,7 @@ function initSchema() {
       staff_no     TEXT,
       designation  TEXT,
       status       TEXT NOT NULL DEFAULT 'pending',
+      photo_base64 TEXT,
       created_at   TEXT NOT NULL,
       updated_at   TEXT
     );
@@ -191,6 +192,7 @@ function initSchema() {
   /* ── Migrations ── */
   try { db.exec('ALTER TABLE projects ADD COLUMN assigned_staff_id TEXT;'); } catch(e) { /* ignores if exists */ }
   try { db.exec('ALTER TABLE projects ADD COLUMN last_exported_hash TEXT;'); } catch(e) { /* ignores if exists */ }
+  try { db.exec('ALTER TABLE users ADD COLUMN photo_base64 TEXT;'); } catch(e) { /* ignores if exists */ }
 
   /* ── Seed default admin if no users exist ── */
   const userCount = db.prepare('SELECT COUNT(*) AS cnt FROM users').get();

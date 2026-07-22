@@ -97,7 +97,13 @@ export default function Sidebar() {
 
       {/* User footer */}
       <div className="sidebar-footer">
-        <div className="user-avatar">{(user?.name || 'U')[0].toUpperCase()}</div>
+        <div className="user-avatar" style={{ padding: 0, overflow: 'hidden' }}>
+          {user?.photo_base64 ? (
+            <img src={user.photo_base64} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            (user?.name || 'U')[0].toUpperCase()
+          )}
+        </div>
         <div className="user-info">
           <div className="user-name">{user?.name || 'User'}</div>
           <div className="user-role" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

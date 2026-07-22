@@ -4,6 +4,8 @@ import Header  from '../components/Header'
 import api from '../api/client'
 import { useProjects } from '../context/ProjectContext'
 import html2canvas from 'html2canvas'
+import pptxgen from 'pptxgenjs'
+import * as XLSX from 'xlsx'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import ColumnManager from '../components/ColumnManager'
@@ -183,6 +185,38 @@ export default function Gantt() {
     }, 80)
     return () => clearTimeout(timer)
   }, [todayX, viewMode])
+
+  const handleExportExcel = () => {
+    const data = filtered.map(p => ({
+      'Project': p.project,
+      'Theme': p.theme,
+      'Start Date': p._ganttStart ? new Date(p._ganttStart).toLocaleDateString() : 'N/A',
+      'End Date': p._ganttEnd ? new Date(p._ganttEnd).toLocaleDateString() : 'N/A',
+      'Duration (Days)': p._ganttEnd && p._ganttStart ? Math.ceil((new Date(p._ganttEnd) - new Date(p._ganttStart))/(1000*60*60*24)) : 'N/A'
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Projects')
+    XLSX.writeFile(wb, 'GanttData.xlsx')
+  }
+
+  const handleExportPPT = () => {
+    const pptx = new pptxgen()
+    const slide = pptx.addSlide({ masterName: 'MASTER_SLIDE' })
+    const tableData = [['Project', 'Theme', 'Start', 'End', 'Duration (Days)']]
+    
+    filtered.forEach(p => {
+      tableData.push([
+        p.project || 'Untitled',
+        p.theme || 'N/A',
+        p._ganttStart ? new Date(p._ganttStart).toLocaleDateString() : 'N/A',
+        p._ganttEnd ? new Date(p._ganttEnd).toLocaleDateString() : 'N/A',
+        p._ganttEnd && p._ganttStart ? Math.ceil((new Date(p._ganttEnd) - new Date(p._ganttStart))/(1000*60*60*24)) : 'N/A'
+      ])
+    })
+    slide.addTable(tableData, { x: 0.5, y: 0.5, w: 9 })
+    pptx.writeFile({ fileName: 'Gantt_Projects.pptx' })
+  }
 
   const groups = useMemo(() => {
     const g = []
@@ -546,9 +580,10 @@ export default function Gantt() {
             </div>
             <div className="modal-footer" style={{marginTop:20,display:'flex',justifyContent:'flex-end',gap:10}}>
               <button className="btn btn-ghost" onClick={()=>setShowExportModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={downloadScreenshot} disabled={!exportProjKey||exporting}>
-                {exporting ? 'Generating...' : 'Download Image'}
-              </button>
+              <div className="header-actions">
+                <button className="btn btn-primary" onClick={handleExportPPT}>Export PPTX</button>
+                <button className="btn btn-secondary" style={{marginLeft: 8}} onClick={handleExportExcel}>Export Excel</button>
+              </div>
             </div>
           </div>
         </div>

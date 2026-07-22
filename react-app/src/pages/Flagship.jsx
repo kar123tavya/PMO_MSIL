@@ -11,6 +11,8 @@ import { useAuth }     from '../context/AuthContext'
 import { useToast }    from '../context/ToastContext'
 import html2canvas     from 'html2canvas'
 import { calculateProjectProgress } from '../utils/progressCalc'
+import pptxgen from 'pptxgenjs'
+import * as XLSX from 'xlsx'
 
 const IL_IDS = ['il1','il2','il3','il4','il5']
 const IL_LBL = [
@@ -150,7 +152,66 @@ export default function Flagship() {
     catch(e){ showToast(e.message||'Delete failed','error') }
   }
 
-  const handleExport = () => {
+  const handleExportPPT = () => {
+    const pptx = new pptxgen()
+    pptx.layout = 'LAYOUT_16x9'
+    pptx.defineSlideMaster({
+      title: 'MASTER_SLIDE',
+      background: { color: 'FFFFFF' },
+      objects: [
+        { rect: { x: 0, y: 0, w: '100%', h: 0.75, fill: { color: '0a429a' } } },
+        { text: { text: 'Flagship Projects Snapshot', options: { x: 0.5, y: 0.1, w: 9, h: 0.5, fontSize: 24, color: 'FFFFFF', bold: true } } }
+      ]
+    })
+
+    flagships.forEach((p, idx) => {
+      const slide = pptx.addSlide({ masterName: 'MASTER_SLIDE' })
+      slide.addText(`Project: ${p.project || 'Untitled'}`, { x: 0.5, y: 1, w: 9, fontSize: 20, bold: true, color: '333333' })
+      slide.addText(`Theme: ${p.theme || 'N/A'}  |  Division: ${p.division || 'N/A'}  |  Status: ${p.status || 'N/A'}`, { x: 0.5, y: 1.5, w: 9, fontSize: 14, color: '666666' })
+      slide.addText(`Overall Remarks:\n${p.overallStatus || 'No remarks provided.'}`, { x: 0.5, y: 2.2, w: 9, h: 1.5, fontSize: 14, color: '333333', valign: 'top' })
+      
+      const phaseData = IL_IDS.map(id => {
+        const ph = (p.il_phases || []).find(x => x.id === id) || {}
+        return [ id.toUpperCase(), ph.status || 'N/A', ph.actualEnd || ph.targetEnd || 'N/A' ]
+      })
+      
+      slide.addTable([['Phase', 'Status', 'Date'], ...phaseData], {
+        x: 0.5, y: 4, w: 9,
+        colW: [2, 3, 4],
+        fill: 'F7F7F7',
+        color: '333333',
+        fontSize: 12,
+        border: { type: 'solid', pt: 1, color: 'CCCCCC' }
+      })
+    })
+
+    pptx.writeFile({ fileName: `Flagship_Snapshot_${new Date().toISOString().slice(0,10)}.pptx` })
+  }
+
+  const handleExportExcel = () => {
+    const data = flagships.map(p => ({
+      'Project Code': p.parentCode,
+      'Project Name': p.project,
+      'Theme': p.theme,
+      'Division': p.division,
+      'Status': p.status,
+      'Target Date': p.liveTarget,
+      'PIC': p.assignedStaffId || 'Unassigned',
+      'QA-BU Email': p.buEmail || 'N/A',
+      'Overall Remarks': p.overallStatus || 'N/A',
+      'IL1 Date': (p.il_phases||[]).find(x=>x.id==='il1')?.actualEnd || '',
+      'IL2 Date': (p.il_phases||[]).find(x=>x.id==='il2')?.actualEnd || '',
+      'IL3 Date': (p.il_phases||[]).find(x=>x.id==='il3')?.actualEnd || '',
+      'IL4 Date': (p.il_phases||[]).find(x=>x.id==='il4')?.actualEnd || '',
+      'IL5 Date': (p.il_phases||[]).find(x=>x.id==='il5')?.actualEnd || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Flagship Projects')
+    XLSX.writeFile(wb, `Flagship_Snapshot_${new Date().toISOString().slice(0,10)}.xlsx`)
+  }
+
+  const handleExportImage = () => {
     setExporting(true)
     setTimeout(() => {
       const el = document.getElementById('flagship-export-area')
@@ -162,7 +223,7 @@ export default function Flagship() {
         link.click()
         setExporting(false)
       })
-    }, 100)
+    }, 500)
   }
 
   if (loading) return <div className="loading-screen">Loading…</div>
@@ -172,9 +233,10 @@ export default function Flagship() {
       <Sidebar/>
       <div className="app-main">
         <Header title="Flagship Projects" searchValue={search} onSearch={setSearch}>
-          <button className="btn btn-outline" onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Exporting...' : '📷 Export Snapshot'}
-          </button>
+          <div className="header-actions">
+            <button className="btn btn-primary" onClick={handleExportPPT}>Export PPTX</button>
+            <button className="btn btn-secondary" style={{marginLeft: 8}} onClick={handleExportExcel}>Export Excel</button>
+          </div>
           <button className="btn btn-ghost" onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
         </Header>
         <div className="page-content" id="flagship-export-area" style={{ background: 'var(--bg-color)' }}>

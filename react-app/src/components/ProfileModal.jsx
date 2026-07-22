@@ -7,10 +7,47 @@ export default function ProfileModal({ onClose }) {
   const { user, logout } = useAuth()
   const toast = useToast()
   
+  const [name, setName] = useState(user?.name || '')
   const [email, setEmail] = useState(user?.email || '')
+  const [staffNo, setStaffNo] = useState(user?.staffNo || '')
+  const [photo, setPhoto] = useState(user?.photo_base64 || '')
+  
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Compress image helper
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const MAX_WIDTH = 250
+        const MAX_HEIGHT = 250
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH }
+        } else {
+          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8)
+        setPhoto(compressedBase64)
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -21,7 +58,7 @@ export default function ProfileModal({ onClose }) {
 
     setLoading(true)
     try {
-      await api.put('/users/profile', { email, password })
+      await api.put('/users/profile', { name, email, staffNo, password, photo_base64: photo })
       toast.show('Profile updated successfully! Please log in again.', 'success')
       
       // Force user to login again since their token payload might be outdated or they changed password
@@ -41,10 +78,27 @@ export default function ProfileModal({ onClose }) {
         <h2 style={{ marginBottom: 16 }}>My Profile Settings</h2>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 10 }}>
+            <div 
+              style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--surface-2)', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 8, cursor: 'pointer' }}
+              onClick={() => document.getElementById('photo-upload').click()}
+            >
+              {photo ? <img src={photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '2rem' }}>{(name || 'U')[0].toUpperCase()}</span>}
+            </div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }}>
+              Change Photo
+              <input id="photo-upload" type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+            </label>
+          </div>
+
           <div className="form-group">
             <label>Name</label>
-            <input type="text" value={user?.name || ''} disabled style={{ background: '#f5f5f5' }} />
-            <small style={{ color: 'var(--text-muted)' }}>Name changes must be done by an Admin.</small>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required />
+          </div>
+
+          <div className="form-group">
+            <label>Staff No. (Optional)</label>
+            <input type="text" value={staffNo} onChange={e => setStaffNo(e.target.value)} placeholder="e.g. MS12345" />
           </div>
 
           <div className="form-group">

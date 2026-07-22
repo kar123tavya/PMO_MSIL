@@ -205,26 +205,26 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                 {dynamicDivs.map(d=><option key={d} value={d} />)}
               </datalist>
             </div>
-            <div className="form-group"><label>Status</label>
-              <select value={status} onChange={e=>setStatus(e.target.value)}>
+            <div className="form-group"><label>Status *</label>
+              <select value={status} onChange={e=>setStatus(e.target.value)} required>
                 <option value="">Select status</option>{STATS.map(s=><option key={s}>{s}</option>)}
               </select>
             </div>
-            <div className="form-group"><label>Category</label>
-              <input list="cats-list" value={cat} onChange={e=>setCat(e.target.value)} placeholder="Type or select category" />
+            <div className="form-group"><label>Category *</label>
+              <input list="cats-list" value={cat} onChange={e=>setCat(e.target.value)} placeholder="Type or select category" required />
               <datalist id="cats-list">
                 {dynamicCats.map(c=><option key={c} value={c} />)}
               </datalist>
             </div>
-            <div className="form-group"><label>Financial Year</label>
-              <select value={fy} onChange={e=>setFy(e.target.value)}>
+            <div className="form-group"><label>Financial Year *</label>
+              <select value={fy} onChange={e=>setFy(e.target.value)} required>
                 <option value="">Select FY</option>{FYS.map(f=><option key={f}>{f}</option>)}
               </select>
             </div>
-            <div className="form-group"><label>Live Target Date</label><input type="date" value={ltgt} onChange={e=>setLtgt(e.target.value)}/></div>
-            <div className="form-group"><label>Live Actual Date</label><input type="date" value={lact} onChange={e=>setLact(e.target.value)}/></div>
-            <div className="form-group"><label>Assigned Staff (PIC)</label>
-              <select value={staff} onChange={e=>setStaff(e.target.value)}>
+            <div className="form-group"><label>Live Target Date *</label><input type="date" value={ltgt} onChange={e=>setLtgt(e.target.value)} required /></div>
+            <div className="form-group"><label>Live Actual Date *</label><input type="date" value={lact} onChange={e=>setLact(e.target.value)} required /></div>
+            <div className="form-group"><label>Assigned Staff (PIC) *</label>
+              <select value={staff} onChange={e=>setStaff(e.target.value)} required>
                 <option value="">-- Unassigned --</option>
                 {users.map(u => (
                   <option key={u.staff_no} value={u.staff_no}>
@@ -233,7 +233,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                 ))}
               </select>
             </div>
-            <div className="form-group"><label>Business User (BU) Email</label><input type="email" value={buEmail} onChange={e=>setBuEmail(e.target.value)} placeholder="BU's Email ID"/></div>
+            <div className="form-group"><label>QA-BU Email *</label><input type="email" value={buEmail} onChange={e=>setBuEmail(e.target.value)} placeholder="QA-BU's Email ID" required/></div>
           </div>
           <div className="form-grid-3" style={{marginBottom:14}}>
             <div className="form-group"><label>Man-hrs / Month</label><input type="number" value={mh}   onChange={e=>setMh(e.target.value)}   min="0"/></div>
@@ -248,7 +248,6 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
             <label className="checkbox-row"><input type="checkbox" checked={tp}   onChange={e=>setTp(e.target.checked)} /> 3rd Party</label>
           </div>
           <div className="form-group"><label>Current Status (As-on-date)</label><textarea rows={2} value={ovr} onChange={e=>setOvr(e.target.value)} placeholder="Overall current status / progress remark…"/></div>
-          <div className="form-group"><label>IL4 - New Changes & Learnings</label><textarea rows={2} value={il4Learnings} onChange={e=>setIl4Learnings(e.target.value)} placeholder="Document any new changes or learnings from UAT (PIC)..."/></div>
         </div>
 
         <div className="form-section">
@@ -384,6 +383,9 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
               </div>
             ))}
           </div>
+
+          <div className="form-group" style={{marginTop: 20}}><label>IL4 - New Changes & Learnings</label><textarea rows={2} value={il4Learnings} onChange={e=>setIl4Learnings(e.target.value)} placeholder="Document any new changes or learnings from UAT (PIC)..."/></div>
+
         </div>
         
         {(isEdit && (status === 'IL5' || status === 'Live') && (user?.role === 'pic' || user?.role === 'sic' || user?.role === 'dpm' || user?.role === 'admin')) && (
@@ -397,13 +399,13 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                 <div style={{display:'flex', gap:20}}>
                   <div style={{flex: 1, padding: 10, background: 'white', borderRadius: 4, border: '1px solid var(--border)'}}>
                     <strong style={{fontSize:'0.75rem'}}>PIC's Submission:</strong>
-                    <div style={{fontSize:'0.8rem', marginTop: 4}}>BU: {project?.effortScores?.pic?.bu || 0}%</div>
+                    <div style={{fontSize:'0.8rem', marginTop: 4}}>QA-BU: {project?.effortScores?.pic?.bu || 0}%</div>
                     <div style={{fontSize:'0.8rem'}}>PIC: {project?.effortScores?.pic?.pic || 0}%</div>
                     <div style={{fontSize:'0.8rem'}}>SIC: {project?.effortScores?.pic?.sic || 0}%</div>
                   </div>
                   <div style={{flex: 1, padding: 10, background: 'white', borderRadius: 4, border: '1px solid var(--border)'}}>
                     <strong style={{fontSize:'0.75rem'}}>SIC's Submission:</strong>
-                    <div style={{fontSize:'0.8rem', marginTop: 4}}>BU: {project?.effortScores?.sic?.bu || 0}%</div>
+                    <div style={{fontSize:'0.8rem', marginTop: 4}}>QA-BU: {project?.effortScores?.sic?.bu || 0}%</div>
                     <div style={{fontSize:'0.8rem'}}>PIC: {project?.effortScores?.sic?.pic || 0}%</div>
                     <div style={{fontSize:'0.8rem'}}>SIC: {project?.effortScores?.sic?.sic || 0}%</div>
                   </div>
@@ -416,7 +418,7 @@ export default function ProjectForm({ project, ilPhases, onSave, onDelete, onClo
                 </p>
                 <div style={{display:'flex', gap: 10, alignItems: 'center'}}>
                   <div style={{display:'flex', flexDirection:'column'}}>
-                    <label style={{fontSize:'0.7rem'}}>BU/DE %</label>
+                    <label style={{fontSize:'0.7rem'}}>QA-BU/DE %</label>
                     <input id="es_bu" type="number" min="0" max="100" defaultValue={project?.effortScores?.[user.role]?.bu || ""} style={{width: 70, padding: '4px'}} />
                   </div>
                   <div style={{display:'flex', flexDirection:'column'}}>

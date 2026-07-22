@@ -21,8 +21,8 @@ function rowToUser(row) {
     section:     row.section,
     staffNo:     row.staff_no,
     designation: row.designation,
-    status:      row.status,
     manager_email: row.manager_email,
+    photo_base64:  row.photo_base64,
     createdAt:   row.created_at,
   };
 }
@@ -96,11 +96,14 @@ router.put('/:id/approve', authMiddleware, (req, res) => {
 
 /* PUT /api/users/profile - Self profile update */
 router.put('/profile', authMiddleware, (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, name, staffNo, photo_base64 } = req.body;
   const uid = req.user.uid;
   
   if (!email || !email.trim()) {
     return res.status(400).json({ error: 'Email cannot be empty.' });
+  }
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name cannot be empty.' });
   }
 
   // Check if email belongs to someone else
@@ -110,13 +113,13 @@ router.put('/profile', authMiddleware, (req, res) => {
   }
 
   const now = new Date().toISOString();
-  let updateQuery = `UPDATE users SET email=?, updated_at=? WHERE id=?`;
-  let params = [email.trim().toLowerCase(), now, uid];
+  let updateQuery = `UPDATE users SET name=?, email=?, staff_no=?, photo_base64=?, updated_at=? WHERE id=?`;
+  let params = [name.trim(), email.trim().toLowerCase(), staffNo||null, photo_base64||null, now, uid];
 
   if (password && password.trim()) {
     const hash = bcrypt.hashSync(password.trim(), 10);
-    updateQuery = `UPDATE users SET email=?, password_hash=?, updated_at=? WHERE id=?`;
-    params = [email.trim().toLowerCase(), hash, now, uid];
+    updateQuery = `UPDATE users SET name=?, email=?, staff_no=?, photo_base64=?, password_hash=?, updated_at=? WHERE id=?`;
+    params = [name.trim(), email.trim().toLowerCase(), staffNo||null, photo_base64||null, hash, now, uid];
   }
 
   db.prepare(updateQuery).run(...params);
