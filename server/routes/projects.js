@@ -236,6 +236,121 @@ router.post('/', authMiddleware, (req, res) => {
   res.status(201).json({ id });
 });
 
+/* PUT /api/projects/bulk */
+router.put('/bulk', authMiddleware, (req, res) => {
+  const { ids, updates } = req.body;
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'No projects selected.' });
+  }
+  if (!updates || Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No updates provided.' });
+  }
+
+  const u = req.user;
+  if (u.role === 'viewer') return res.status(403).json({ error: 'Read-only access.' });
+
+  const now = new Date().toISOString();
+
+  // If user is a PIC, route to approvals
+  if (u.role === 'pic') {
+    let approvers = [];
+    let ccUsers = [];
+    let allDpmToNotify = [];
+
+    const getManagers = (email) => {
+      let tl = null, sic = null, dpm = null;
+      let curr = db.prepare('SELECT manager_email, role FROM users WHERE email=?').get(email);
+      if (curr && curr.manager_email && curr.role === 'pic') {
+         tl = curr.manager_email;
+         curr = db.prepare('SELECT manager_email, role FROM users WHERE email=?').get(curr.manager_email);
+      } else if (curr && curr.role === 'tl') { tl = email; }
+      if (curr && curr.manager_email && curr.role === 'tl') {
+         sic = curr.manager_email;
+         curr = db.prepare('SELECT manager_email, role FROM users WHERE email=?').get(curr.manager_email);
+      } else if (curr && curr.role === 'sic') { sic = email; }
+      if (curr && curr.manager_email && curr.role === 'sic') { dpm = curr.manager_email; }
+      return { tl, sic, dpm };
+    };
+
+    const picMgrs = getManagers(u.email);
+    
+    for (const id of ids) {
+      const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(id);
+      if (!existing) continue;
+
+      if (existing.division === u.division) {
+        if (picMgrs.tl) approvers.push(picMgrs.tl);
+        if (picMgrs.sic) approvers.push(picMgrs.sic);
+        if (picMgrs.dpm) allDpmToNotify.push(picMgrs.dpm);
+      } else {
+        // Cross division: own managers + target managers
+        if (picMgrs.tl) approvers.push(picMgrs.tl);
+        if (picMgrs.sic) approvers.push(picMgrs.sic);
+        
+        const targetPicEmail = existing.assigned_to;
+        if (targetPicEmail) {
+          ccUsers.push(targetPicEmail);
+          const mgrs = getManagers(targetPicEmail);
+          if (mgrs.tl) approvers.push(mgrs.tl);
+          if (mgrs.sic) approvers.push(mgrs.sic);
+          if (mgrs.dpm) allDpmToNotify.push(mgrs.dpm);
+        }
+      }
+    }
+
+    const adminRows = db.prepare("SELECT email FROM users WHERE role = 'admin'").all();
+    const adminEmails = adminRows.map(r => r.email);
+
+    if (approvers.length === 0) approvers.push(...adminEmails);
+    else approvers.push(...adminEmails);
+
+    approvers = [...new Set(approvers.filter(Boolean))];
+    ccUsers = [...new Set(ccUsers.filter(Boolean))];
+    allDpmToNotify = [...new Set(allDpmToNotify.filter(Boolean))];
+
+    const notifBody = `${u.name} proposed bulk edits to ${ids.length} projects.`;
+    const customData = JSON.stringify({ 
+      dpm_email: allDpmToNotify.length > 0 ? allDpmToNotify[0] : null, 
+      bulk_ids: ids 
+    });
+
+    db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, cc_users, from_user, from_name, project_id, project_name, status, changes_json, custom_data, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(uuidv4(), 'edit_approval', 'Pending Bulk Edit', notifBody, JSON.stringify(approvers), JSON.stringify(ccUsers), u.email, u.name, 'bulk', `Bulk Edit (${ids.length} Projects)`, 'pending', JSON.stringify(updates), customData, now);
+
+    _broadcast('notifications_changed');
+    return res.status(202).json({ ok: true, message: 'Bulk edits submitted for Head approval!' });
+  }
+
+  // Manager or Admin direct edit
+  let count = 0;
+
+  db.transaction(() => {
+    for (const id of ids) {
+      const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(id);
+      if (!existing) continue;
+
+      let newDiv = updates.division !== undefined && updates.division !== '' ? updates.division : existing.division;
+      let newDept = updates.department !== undefined && updates.department !== '' ? updates.department : existing.department;
+      let newCat = updates.category !== undefined && updates.category !== '' ? updates.category : existing.category;
+      let newStatus = updates.status !== undefined && updates.status !== '' ? updates.status : existing.status;
+
+      db.prepare(`UPDATE projects SET division=?, department=?, category=?, status=?, updated_at=?, updated_by=? WHERE id=?`).run(
+        newDiv, newDept, newCat, newStatus, now, u.email, id
+      );
+
+      db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
+        VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), id, existing.project, u.uid, u.name, u.role, 'bulk_updated', now);
+      
+      count++;
+    }
+  })();
+
+  _broadcast('projects_changed', getAllRows());
+  triggerExcelRewrite(db);
+  res.json({ ok: true, count });
+});
+
 /* PUT /api/projects/:id */
 router.put('/:id', authMiddleware, (req, res) => {
   const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
@@ -294,6 +409,12 @@ router.put('/:id', authMiddleware, (req, res) => {
       if (p._crossDivisionReason) {
         notifBody += `\n\n**Cross-Division Edit Reason:** ${p._crossDivisionReason}`;
       }
+      
+      // Add editing PIC's own managers
+      const ownMgrs = getManagers(u.email);
+      if (ownMgrs.tl) approvers.push(ownMgrs.tl);
+      if (ownMgrs.sic) approvers.push(ownMgrs.sic);
+
       const targetPicEmail = existing.assigned_to;
       if (targetPicEmail) {
         ccUsers.push(targetPicEmail); // Notify the target PIC
@@ -398,11 +519,63 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
   const notif = db.prepare("SELECT * FROM notifications WHERE id = ? AND type = 'edit_approval'").get(notifId);
   if (!notif) return res.status(404).json({ error: 'Notification not found' });
   
+  const now = new Date().toISOString();
+
+  // If from_user is a UUID (from old bug), try to fetch the email, otherwise use as-is
+  let targetEmail = notif.from_user;
+  if (targetEmail && targetEmail.length === 36 && targetEmail.includes('-')) {
+    const uRow = db.prepare('SELECT email FROM users WHERE id = ?').get(targetEmail);
+    if (uRow) targetEmail = uRow.email;
+  }
+
+  // Handle Bulk Approval
+  if (req.params.id === 'bulk') {
+    const updates = JSON.parse(notif.changes_json);
+    const cdata = JSON.parse(notif.custom_data || '{}');
+    const ids = cdata.bulk_ids || [];
+    
+    db.transaction(() => {
+      for (const pid of ids) {
+        const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(pid);
+        if (!existing) continue;
+
+        let newDiv = updates.division !== undefined && updates.division !== '' ? updates.division : existing.division;
+        let newDept = updates.department !== undefined && updates.department !== '' ? updates.department : existing.department;
+        let newCat = updates.category !== undefined && updates.category !== '' ? updates.category : existing.category;
+        let newStatus = updates.status !== undefined && updates.status !== '' ? updates.status : existing.status;
+
+        db.prepare(`UPDATE projects SET division=?, department=?, category=?, status=?, updated_at=?, updated_by=? WHERE id=?`).run(
+          newDiv, newDept, newCat, newStatus, now, notif.from_name, pid
+        );
+
+        db.prepare(`INSERT INTO audit_log (id,project_id,project_name,user_id,user_name,role,action,timestamp)
+          VALUES (?,?,?,?,?,?,?,?)`).run(uuidv4(), pid, existing.project, notif.from_user, notif.from_name, 'pic', 'bulk_edit_approved', now);
+      }
+    })();
+
+    db.prepare("UPDATE notifications SET status = 'approved', updated_at = ? WHERE id = ?").run(now, notifId);
+
+    const returnId = uuidv4();
+    db.prepare(`INSERT INTO notifications
+      (id, type, title, body, to_users, cc_users, from_user, from_name, project_id, project_name, status, priority, read_by, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(
+      returnId, 'general', 'Your bulk edit was Approved',
+      `Your proposed bulk edit for ${ids.length} projects was approved by ${req.user.name}.`,
+      JSON.stringify([targetEmail]), '[]', 'system', 'System', 'bulk', `Bulk Edit (${ids.length} Projects)`, 'approved', 'normal', '[]', now
+    );
+    _broadcast('notification_new', { id: returnId, type: 'general', title: 'Your bulk edit was Approved', priority: 'normal', from_name: 'System' });
+
+    _broadcast('projects_changed', getAllRows());
+    triggerExcelRewrite(db);
+    return res.json({ ok: true });
+  }
+
+  // Handle Single Project Approval
   const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Project not found.' });
 
   const p = JSON.parse(notif.changes_json);
-  const now = new Date().toISOString();
 
   db.prepare(`UPDATE projects SET
     parent_code=?, project=?, theme=?, division=?, status=?, category=?, fy=?,
@@ -431,11 +604,7 @@ router.put('/:id/approve_edit', authMiddleware, (req, res) => {
   db.prepare("UPDATE notifications SET status = 'approved', updated_at = ? WHERE id = ?").run(now, notifId);
 
   // If from_user is a UUID (from old bug), try to fetch the email, otherwise use as-is
-  let targetEmail = notif.from_user;
-  if (targetEmail && targetEmail.length === 36 && targetEmail.includes('-')) {
-    const uRow = db.prepare('SELECT email FROM users WHERE id = ?').get(targetEmail);
-    if (uRow) targetEmail = uRow.email;
-  }
+  // (already resolved above, just kept for logic flow if needed)
 
   // Send a notification back to the original requester (PIC)
   const returnId = uuidv4();

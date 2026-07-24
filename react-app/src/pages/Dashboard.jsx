@@ -7,11 +7,14 @@ import ProjectForm    from '../components/ProjectForm'
 import ImportModal    from '../components/ImportModal'
 import RoleBadge      from '../components/RoleBadge'
 import ApprovalModal  from '../components/ApprovalModal'
+import BulkEditModal  from '../components/BulkEditModal'
 import ColumnManager  from '../components/ColumnManager'
 import { useProjects }       from '../context/ProjectContext'
 import { useAuth }           from '../context/AuthContext'
 import { useToast }          from '../context/ToastContext'
 import api from '../api/client'
+import html2canvas from 'html2canvas'
+import pptxgen from 'pptxgenjs'
 import { calculateProjectProgress } from '../utils/progressCalc'
 
 const DIVISIONS = ['MQ', 'ND', 'PQ-MP', 'PQ-NPD', 'COP', 'PDS', 'VI', 'VU', 'MA', 'VQ']
@@ -66,9 +69,12 @@ export default function Dashboard() {
   const [modal,   setModal]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [saving,  setSaving]  = useState(false)
+  const [selected, setSelected] = useState([])
+  const [bulkModal, setBulkModal] = useState(false)
   const [importOpen,    setImportOpen]    = useState(false)
   const [approvalOpen,  setApprovalOpen]  = useState(false)
   const [approvalData,  setApprovalData]  = useState({ project: null, changes: [] })
+  const [exporting, setExporting] = useState(false)
   
   const [showColMgr, setShowColMgr] = useState(false)
   const [customCols, setCustomCols] = useState([])
@@ -108,6 +114,44 @@ export default function Dashboard() {
         URL.revokeObjectURL(url)
       })
       .catch(err => showToast('Export failed: ' + err.message, 'error'))
+  }
+
+  const handleExportPPT = () => {
+    setExporting(true)
+    const pptx = new pptxgen()
+    const slide = pptx.addSlide()
+    
+    slide.addText('Project Dashboard Snapshot', { x: 0.5, y: 0.5, fontSize: 24, bold: true, color: '363636' })
+    slide.addText(`Total Projects: ${filtered.length}`, { x: 0.5, y: 1.2, fontSize: 14, color: '666666' })
+    
+    // Add simple table with first 10 projects
+    const rows = [['Code', 'Project Name', 'Status', 'Division']]
+    filtered.slice(0, 10).forEach(p => {
+      rows.push([p.parentCode || p._key || '', p.project || '', p.status || '', p.division || ''])
+    })
+    
+    if (rows.length > 1) {
+      slide.addTable(rows, { x: 0.5, y: 2.0, w: 9.0, colW: [2, 4, 1.5, 1.5], border: {pt: 1, color: 'CCCCCC'} })
+    }
+    
+    pptx.writeFile({ fileName: `Dashboard_Snapshot_${new Date().toISOString().slice(0,10)}.pptx` })
+      .then(() => setExporting(false))
+      .catch(() => setExporting(false))
+  }
+
+  const handleExportImage = () => {
+    setExporting(true)
+    setTimeout(() => {
+      const el = document.getElementById('dashboard-export-area')
+      if(!el){ setExporting(false); return }
+      html2canvas(el, { scale: 2 }).then(canvas => {
+        const link = document.createElement('a')
+        link.download = `Dashboard_Snapshot.png`
+        link.href = canvas.toDataURL('image/png')
+        link.click()
+        setExporting(false)
+      }).catch(() => setExporting(false))
+    }, 500)
   }
 
   const divs = useMemo(()=>[...new Set([...DIVISIONS, ...projects.map(p=>p.division).filter(Boolean)])].sort(),[projects])
@@ -196,10 +240,19 @@ export default function Dashboard() {
           <div className="db-status"><span className="db-dot connected"/><span>Live</span></div>
           {can('import') && <button id="tour-import" className="btn btn-ghost" onClick={() => setImportOpen(true)}>⬆ Import</button>}
           <button id="tour-columns" className="btn btn-ghost" onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
-          {can('export') && <button id="tour-export" className="btn btn-ghost" onClick={handleExport}>⬇ Export</button>}
+          
+          {can('export') && (
+            <div style={{display:'flex', gap:8}}>
+              <button className="btn btn-secondary" onClick={handleExportImage} disabled={exporting}>
+                {exporting ? '...' : '📷 Snapshot'}
+              </button>
+              <button className="btn btn-secondary" onClick={handleExportPPT} disabled={exporting}>PPTX</button>
+              <button id="tour-export" className="btn btn-ghost" onClick={handleExport}>⬇ Excel</button>
+            </div>
+          )}
           {can('add_project') && <button id="tour-add-project" className="btn btn-primary" onClick={() => { setEditing(null); setModal(true) }}>+ Add Project</button>}
         </Header>
-        <div className="page-content">
+        <div className="page-content" id="dashboard-export-area">
           <div className="kpi-row">
             <KPICard label="Total Projects"    value={kpis.total}    accent="#1a56db" icon="📋"/>
             <KPICard label="Man Days / Year"   value={kpis.manDays}  accent="#7c3aed" icon="⏱"/>
@@ -232,6 +285,11 @@ export default function Dashboard() {
               <span className="count-badge">{filtered.length}</span>
               <span>of {projects.length} projects</span>
             </div>
+            {selected.length > 0 && (
+              <button className="btn btn-primary" onClick={() => setBulkModal(true)}>
+                Bulk Edit ({selected.length})
+              </button>
+            )}
           </div>
 
           <div style={{display:'flex', justifyContent:'center', padding:'12px', background:'var(--surface-2)', borderTop:'1px solid var(--border)', borderLeft:'1px solid var(--border)', borderRight:'1px solid var(--border)', borderTopLeftRadius:'8px', borderTopRightRadius:'8px'}}>
@@ -248,6 +306,7 @@ export default function Dashboard() {
           <div id="tour-table" className="table-wrap">
             <table>
               <thead><tr>
+                <th><input type="checkbox" onChange={(e) => setSelected(e.target.checked ? filtered.map(p => p._key || p.id) : [])} checked={selected.length === filtered.length && filtered.length > 0} /></th>
                 <th>Code</th><th>Project Name</th><th>Status</th><th>% Done</th><th>Live Target</th>
                 <th>Category</th><th>Division</th><th>FY</th><th>Man-hrs/Mo</th>
                 <th>Cost (₹)</th><th>Defects</th><th>Use Cases</th>
@@ -256,11 +315,17 @@ export default function Dashboard() {
                 <th>Current Stage</th>
               </tr></thead>
               <tbody>
-                {filtered.length===0&&<tr><td colSpan={16+customCols.length} className="no-data">No projects match the current filters.</td></tr>}
+                {filtered.length===0&&<tr><td colSpan={17+customCols.length} className="no-data">No projects match the current filters.</td></tr>}
                 {filtered.map((p,i)=>{
                   const stage=currentStage(p)
                   return(
                     <tr key={p._key} style={{background:i%2===1?'var(--surface-2)':''}}>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={selected.includes(p._key || p.id)} onChange={(e) => {
+                          const id = p._key || p.id;
+                          setSelected(prev => e.target.checked ? [...prev, id] : prev.filter(x => x !== id));
+                        }} />
+                      </td>
                       <td style={{fontFamily:'monospace',fontSize:'.75rem',color:'var(--text-muted)'}}>{p.parentCode||genCode(p._key)}</td>
                       <td className="td-projname" onClick={()=>{setEditing(p);setModal(true)}}>{p.project||'—'}</td>
                       <td><StatusPill status={p.status}/></td>
@@ -291,6 +356,7 @@ export default function Dashboard() {
       {importOpen && <ImportModal onClose={() => setImportOpen(false)} onImported={() => setImportOpen(false)} />}
       {showColMgr && <ColumnManager onClose={() => setShowColMgr(false)} />}
       {approvalOpen && <ApprovalModal project={approvalData.project} changes={approvalData.changes} onClose={() => setApprovalOpen(false)} onSent={() => setApprovalOpen(false)} />}
+      <BulkEditModal isOpen={bulkModal} onClose={() => setBulkModal(false)} selectedIds={selected} onSaved={() => { setSelected([]); window.location.reload(); }} />
     </div>
   )
 }

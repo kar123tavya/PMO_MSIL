@@ -61,7 +61,7 @@ export default function Users() {
     }
   }
 
-  async function handleRoleChange(uid, newRole, newManagerEmail) {
+  async function handleUserChange(uid, updates) {
     const target = users.find(u => u.uid === uid)
     if (!target) return
     try {
@@ -71,10 +71,10 @@ export default function Users() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionStorage.getItem('pmo_session') ? JSON.parse(sessionStorage.getItem('pmo_session')).token : ''}` 
         },
-        body: JSON.stringify({ ...target, role: newRole !== undefined ? newRole : target.role, manager_email: newManagerEmail !== undefined ? newManagerEmail : target.manager_email })
+        body: JSON.stringify({ ...target, ...updates })
       })
-      if (!res.ok) throw new Error('Failed to update role')
-      showToast('Role updated.', 'success')
+      if (!res.ok) throw new Error('Failed to update user')
+      showToast('User updated successfully.', 'success')
       fetchUsers()
     } catch (e) {
       showToast(e.message, 'error')
@@ -117,6 +117,7 @@ export default function Users() {
                       <th>Name</th>
                       <th>Email</th>
                       <th>Staff No / Desig</th>
+                      <th>Division</th>
                       <th>Role</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -141,6 +142,26 @@ export default function Users() {
                         <td style={{fontSize: '0.85rem'}}>{u.staffNo || '—'} / {u.designation || '—'}</td>
                         <td>
                           {u.uid === user.uid ? (
+                            <span className="text-muted">{u.division || '—'}</span>
+                          ) : (
+                            <input 
+                              type="text" 
+                              className="input-field" 
+                              style={{padding: '4px 8px', fontSize: '0.85rem', width: '120px'}}
+                              value={u.division || ''}
+                              placeholder="Set Division..."
+                              onChange={(e) => {
+                                const newUsers = [...users]
+                                const idx = newUsers.findIndex(x => x.uid === u.uid)
+                                newUsers[idx].division = e.target.value
+                                setUsers(newUsers)
+                              }}
+                              onBlur={(e) => handleUserChange(u.uid, { division: e.target.value })}
+                            />
+                          )}
+                        </td>
+                        <td>
+                          {u.uid === user.uid ? (
                             <span className="stage-tag">{getRoleLabel(u.role)}</span>
                           ) : (
                             <div style={{display:'flex', flexDirection:'column', gap:4}}>
@@ -148,7 +169,7 @@ export default function Users() {
                                 className="filter-select" 
                                 style={{padding: '4px', fontSize: '0.85rem', width: 'auto'}}
                                 value={u.role}
-                                onChange={(e) => handleRoleChange(u.uid, e.target.value, undefined)}
+                                onChange={(e) => handleUserChange(u.uid, { role: e.target.value })}
                               >
                                 <option value="viewer">Viewer</option>
                                 <option value="pic">Person In Charge (PIC)</option>
@@ -163,7 +184,7 @@ export default function Users() {
                                   className="filter-select" 
                                   style={{padding: '4px', fontSize: '0.8rem', width: 'auto', background: '#f8fafc'}}
                                   value={u.manager_email || ''}
-                                  onChange={(e) => handleRoleChange(u.uid, undefined, e.target.value)}
+                                  onChange={(e) => handleUserChange(u.uid, { manager_email: e.target.value })}
                                 >
                                   <option value="">-- Select Manager --</option>
                                   {users.filter(m => {
