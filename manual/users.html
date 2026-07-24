@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Roles - Project Monitoring Tool Manual</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Project Monitoring Tool Manual</h2>
+    <a href="index.html" class="nav-link">1. Overview</a>
+    <a href="dashboard.html" class="nav-link">2. Main Dashboard & Gantt</a>
+    <a href="flagship.html" class="nav-link">3. Flagship Projects</a>
+    <a href="projects.html" class="nav-link">4. Adding & Editing Projects</a>
+    <a href="users.html" class="nav-link active">5. User Roles & Profiles</a>
+  </div>
+
+  <div class="content">
+    <h1>User Roles & Profiles</h1>
+    <div class="subtitle">Managing system access and profiles.</div>
+
+    <div class="mockup">
+      <img src="assets/users.png" alt="User Management Interface">
+    </div>
+
+    <h2>The Authorization Hierarchy</h2>
+    <p>Project Monitoring Tool enforces strict role-based access control to secure MSIL data.</p>
+    <ul>
+      <li><b>Admin:</b> Full system access. Can approve pending users, change roles, and assign managers.</li>
+      <li><b>DPM (Department Project Manager):</b> Can view all projects and manage department users.</li>
+      <li><b>SIC (Section In Charge):</b> Can edit projects within their section.</li>
+      <li><b>TL (Team Lead):</b> Can edit projects managed by their team.</li>
+      <li><b>PIC (Person In Charge):</b> Can only update projects specifically assigned to them.</li>
+      <li><b>Viewer:</b> Read-only access to Dashboards and Gantt charts.</li>
+    </ul>
+
+    <h2>Managing Your Profile</h2>
+    <p>Every user has a personal profile that dictates their identity across the system.</p>
+    <p>Click the <b>Edit Profile</b> button located in the bottom left corner of the Sidebar (under your name) to open the Profile Settings Modal.</p>
+    
+    <div class="callout">
+      <strong>Customizing Your Identity:</strong> In the Profile Modal, you can update your Name, Email, Password, and your official MSIL <b>Staff Number</b>. Most importantly, you can upload a custom <b>Profile Photo</b> which will instantly display in the sidebar and next to your name in the User Management list!
+    </div>
+
+  </div>
+</body>
+</html>

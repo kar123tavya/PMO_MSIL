@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Managing Projects - Project Monitoring Tool Manual</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Project Monitoring Tool Manual</h2>
+    <a href="index.html" class="nav-link">1. Overview</a>
+    <a href="dashboard.html" class="nav-link">2. Main Dashboard & Gantt</a>
+    <a href="flagship.html" class="nav-link">3. Flagship Projects</a>
+    <a href="projects.html" class="nav-link active">4. Adding & Editing Projects</a>
+    <a href="users.html" class="nav-link">5. User Roles & Profiles</a>
+  </div>
+
+  <div class="content">
+    <h1>Adding & Editing Projects</h1>
+    <div class="subtitle">Managing the MSIL data lifecycle.</div>
+
+    <h2>Adding a New Project</h2>
+    <p>To add a new project, click the <b>+ New Project</b> button located at the top right of the Dashboard.</p>
+    <p>Because accountability is crucial, all fields in the initial project creation form are strictly mandatory. This ensures that every project enters the system with complete tracking parameters.</p>
+    
+    <ul>
+      <li><b>Basic Info:</b> Project Name, Scope, Category, PIC, Division, Department, Section.</li>
+      <li><b>Budget:</b> Estimated vs. Actual.</li>
+      <li><b>Contact Info:</b> QA-BU Email for cross-functional communication.</li>
+      <li><b>Timestamps:</b> Target and Actual completion dates for each IL Phase (IL1 through IL5).</li>
+    </ul>
+
+    <h2>Modifying a Project</h2>
+    <p>Only users with appropriate permissions (Admin, DPM, SIC, TL, or the designated PIC) can modify a project.</p>
+    <p>Click the <b>✏️ Edit</b> button next to a project row to open the modification modal.</p>
+    
+    <div class="callout">
+      <strong>New IL4 Fields:</strong> When a project reaches IL4 (UAT) or later, two new critical text fields appear at the bottom of the form: <b>New Changes</b> and <b>Learnings</b>. These are used to capture UAT feedback and institutional knowledge.
+    </div>
+
+    <a href="users.html" class="btn">Next: User Roles & Profiles &rarr;</a>
+  </div>
+</body>
+</html>

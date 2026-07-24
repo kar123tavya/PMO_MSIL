@@ -4,6 +4,8 @@ import Header  from '../components/Header'
 import api from '../api/client'
 import { useProjects } from '../context/ProjectContext'
 import html2canvas from 'html2canvas'
+import pptxgen from 'pptxgenjs'
+import * as XLSX from 'xlsx'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import ColumnManager from '../components/ColumnManager'
@@ -13,6 +15,7 @@ const IL_BGS    = ['#ede9fe','#e0f2fe','#dcfce7','#fef9c3','#fee2e2']
 const ROW_H_PH  = 44
 const ROW_H_ST  = 38
 const ROW_H_PRJ = 34
+const LABEL_W   = 280
 
 const MODES = {
   weekly:    { cellW: 36, step: 'week' },
@@ -83,20 +86,33 @@ export default function Gantt() {
   const { projects, loading } = useProjects()
   const { showToast } = useToast()
   const { user } = useAuth()
-  const [search,       setSearch]       = useState('')
-  const [filterDiv,    setFilterDiv]    = useState(user?.role === 'pic' ? (user?.division || '') : '')
-  const [expanded,     setExpanded]     = useState({})
-  const [viewMode,     setViewMode]     = useState('monthly')
+  const [search,          setSearch]          = useState('')
+  const [filterCat,       setFilterCat]       = useState('')
+  const [filterDiv,       setFilterDiv]       = useState('')
+  const [filterTheme,     setFilterTheme]     = useState('')
+  const [filterStatus,    setFilterStatus]    = useState('')
+  const [expanded,        setExpanded]        = useState({})
+  const [viewMode,        setViewMode]        = useState('monthly')
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportProjKey,   setExportProjKey]   = useState('')
-  const [exporting,    setExporting]    = useState(false)
+  const [exporting,       setExporting]       = useState(false)
   const [isolatedProjKey, setIsolatedProjKey] = useState(null)
-  const [showColMgr,   setShowColMgr]   = useState(false)
-  const [customCols,   setCustomCols]   = useState([])
+  const [showColMgr,      setShowColMgr]      = useState(false)
+  const [customCols,      setCustomCols]      = useState([])
+  // Tracks horizontal scroll to float project labels inside the gantt area
+  const [ganttScrollX,      setGanttScrollX]      = useState(0)
+  // Which project label is highlighted (when clicked from the gantt badge)
+  const [highlightedProjKey, setHighlightedProjKey] = useState(null)
 
-  const sidebarRef    = useRef(null)
+  // prevent recursive scroll sync
+  const isSyncingScroll = useRef(false)
+
+  // LEFT sidebar (project labels) — vertically scrollable only
+  const labelsRef     = useRef(null)
+  // RIGHT gantt body  — vertically scrollable
   const ganttBodyRef  = useRef(null)
-  const ganttXScrollRef = useRef(null)
+  // OUTER wrapper for RIGHT pane — horizontally scrollable
+  const ganttXRef     = useRef(null)
 
   useEffect(() => {
     api.get('/settings/columns').then(({ data }) => {
@@ -104,9 +120,36 @@ export default function Gantt() {
     }).catch(console.error)
   }, [showColMgr])
 
-  function handleScroll(e) {
-    if (e.target === sidebarRef.current && ganttBodyRef.current) ganttBodyRef.current.scrollTop = sidebarRef.current.scrollTop
-    else if (e.target === ganttBodyRef.current && sidebarRef.current) sidebarRef.current.scrollTop = ganttBodyRef.current.scrollTop
+  // Sync vertical scrolling between left labels pane and right gantt body
+  function handleLabelScroll(e) {
+    if (isSyncingScroll.current) return
+    isSyncingScroll.current = true
+    if (ganttBodyRef.current) ganttBodyRef.current.scrollTop = e.target.scrollTop
+    requestAnimationFrame(() => { isSyncingScroll.current = false })
+  }
+  function handleBodyScroll(e) {
+    if (isSyncingScroll.current) return
+    isSyncingScroll.current = true
+    if (labelsRef.current) labelsRef.current.scrollTop = e.target.scrollTop
+    requestAnimationFrame(() => { isSyncingScroll.current = false })
+  }
+  function handleXScroll(e) {
+    setGanttScrollX(e.target.scrollLeft)
+  }
+
+  // Called when user clicks the floating project badge in the gantt area.
+  // Scrolls the left label panel to that project row and briefly highlights it.
+  function scrollToLabel(projKey) {
+    const el = document.getElementById(`label-proj-${projKey}`)
+    if (el && labelsRef.current) {
+      // Scroll left panel so the project label is near the top
+      labelsRef.current.scrollTop = el.offsetTop - 8
+      // Also sync the right gantt body
+      if (ganttBodyRef.current) ganttBodyRef.current.scrollTop = el.offsetTop - 8
+    }
+    // Highlight for 1.5 seconds
+    setHighlightedProjKey(projKey)
+    setTimeout(() => setHighlightedProjKey(null), 1500)
   }
 
   const filtered = useMemo(() =>
@@ -118,25 +161,62 @@ export default function Gantt() {
     [projects, search, filterDiv, isolatedProjKey]
   )
 
-  // Fixed 4 years before and 4 years after today
+  // Build 4 years before and 4 years after today
   const { cols, totalW, todayX, cw } = useMemo(() => {
     const now = new Date()
     const mn = new Date(now.getFullYear() - 4, 0, 1).getTime()
     const mx = new Date(now.getFullYear() + 4, 11, 31).getTime()
-    const step = MODES[viewMode].step
-    const cellW = MODES[viewMode].cellW
-    const cs = buildCols(mn, mx, step)
-    const tx = dateToX(now, cs, cellW)
+    const step   = MODES[viewMode].step
+    const cellW  = MODES[viewMode].cellW
+    const cs     = buildCols(mn, mx, step)
+    const tx     = dateToX(now, cs, cellW)
     return { cols: cs, totalW: cs.length * cellW, todayX: tx, cw: cellW }
   }, [viewMode])
 
-  // Scroll to today on load / viewMode change
+  // Scroll to today whenever the view mode changes or the chart first loads
+  // Use a small delay so the DOM has finished painting before we measure clientWidth
   useEffect(() => {
-    if (ganttXScrollRef.current && todayX > 0) {
-      const containerW = ganttXScrollRef.current.clientWidth
-      ganttXScrollRef.current.scrollLeft = Math.max(0, todayX - containerW / 2)
-    }
-  }, [todayX, cols])
+    const timer = setTimeout(() => {
+      if (ganttXRef.current && todayX > 0) {
+        const visibleW = ganttXRef.current.clientWidth
+        // Center today in the visible area
+        ganttXRef.current.scrollLeft = Math.max(0, todayX - visibleW / 2)
+      }
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [todayX, viewMode])
+
+  const handleExportExcel = () => {
+    const data = filtered.map(p => ({
+      'Project': p.project,
+      'Theme': p.theme,
+      'Start Date': p._ganttStart ? new Date(p._ganttStart).toLocaleDateString() : 'N/A',
+      'End Date': p._ganttEnd ? new Date(p._ganttEnd).toLocaleDateString() : 'N/A',
+      'Duration (Days)': p._ganttEnd && p._ganttStart ? Math.ceil((new Date(p._ganttEnd) - new Date(p._ganttStart))/(1000*60*60*24)) : 'N/A'
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Projects')
+    XLSX.writeFile(wb, 'GanttData.xlsx')
+  }
+
+  const handleExportPPT = () => {
+    const pptx = new pptxgen()
+    const slide = pptx.addSlide({ masterName: 'MASTER_SLIDE' })
+    const tableData = [['Project', 'Theme', 'Start', 'End', 'Duration (Days)']]
+    
+    filtered.forEach(p => {
+      tableData.push([
+        p.project || 'Untitled',
+        p.theme || 'N/A',
+        p._ganttStart ? new Date(p._ganttStart).toLocaleDateString() : 'N/A',
+        p._ganttEnd ? new Date(p._ganttEnd).toLocaleDateString() : 'N/A',
+        p._ganttEnd && p._ganttStart ? Math.ceil((new Date(p._ganttEnd) - new Date(p._ganttStart))/(1000*60*60*24)) : 'N/A'
+      ])
+    })
+    slide.addTable(tableData, { x: 0.5, y: 0.5, w: 9 })
+    pptx.writeFile({ fileName: 'Gantt_Projects.pptx' })
+  }
 
   const groups = useMemo(() => {
     const g = []
@@ -150,7 +230,7 @@ export default function Gantt() {
 
   function bar(startStr, endStr, ilIdx, h, done, isTarget=false, projName='', topOffset='50%') {
     const x1 = dateToX(startStr, cols, cw)
-    const x2 = dateToX(endStr, cols, cw)
+    const x2 = dateToX(endStr,   cols, cw)
     const w  = Math.max(x2 - x1, cw * 0.5)
     const overdue = !done && endStr && endStr < todayStr
     let clr = IL_COLORS[ilIdx % IL_COLORS.length]
@@ -195,14 +275,20 @@ export default function Gantt() {
 
   if (loading) return <div className="loading-screen">Loading Gantt…</div>
 
+  // Height calculations
+  const TOOLBAR_H   = 49  // toolbar bar height
+  const HEADER_H    = 60  // top header height
+  const COL_HEAD_H  = 52  // year + month header rows
+  const BODY_H      = `calc(100vh - ${HEADER_H}px - ${TOOLBAR_H}px - ${COL_HEAD_H}px)`
+
   return (
     <div className="app-shell">
       <Sidebar/>
-      <div className="app-main">
+      <div className="app-main" style={{overflow:'hidden'}}>
         <Header title="Gantt Chart" />
 
         {/* Toolbar */}
-        <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 14px',background:'var(--surface)',borderBottom:'1px solid var(--border)',flexWrap:'wrap'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 14px',background:'var(--surface)',borderBottom:'1px solid var(--border)',flexWrap:'wrap',height:TOOLBAR_H,boxSizing:'border-box'}}>
           <span style={{fontWeight:600,fontSize:'0.82rem',color:'var(--text-muted)'}}>View:</span>
           <select value={viewMode} onChange={e=>setViewMode(e.target.value)} style={{padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',fontSize:'0.8rem'}}>
             <option value="weekly">Weekly</option>
@@ -216,92 +302,229 @@ export default function Gantt() {
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
-          <button className="btn btn-primary" style={{padding:'4px 12px',height:32,fontSize:'0.8rem'}} onClick={()=>setShowExportModal(true)}>📷 Export Snapshot</button>
+          <input
+            type="text"
+            placeholder="🔍 Search…"
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            style={{padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',fontSize:'0.8rem',width:170}}
+          />
+          <button
+            className="btn btn-outline"
+            style={{padding:'3px 10px',fontSize:'0.78rem'}}
+            onClick={() => {
+              if (ganttXRef.current && todayX > 0) {
+                const visibleW = ganttXRef.current.clientWidth
+                ganttXRef.current.scrollLeft = Math.max(0, todayX - visibleW / 2)
+              }
+            }}
+          >📅 Jump to Today</button>
+          <button className="btn btn-primary" style={{padding:'4px 12px',height:32,fontSize:'0.8rem'}} onClick={()=>setShowExportModal(true)}>📷 Export</button>
           <button className="btn btn-outline" style={{padding:'4px 12px',height:32,fontSize:'0.8rem'}} onClick={()=>setShowColMgr(true)}>⚙ Columns</button>
           <span style={{marginLeft:'auto',fontSize:'0.75rem',color:'var(--text-muted)'}}>{filtered.length} project{filtered.length!==1?'s':''}</span>
         </div>
 
-        <div id="gantt-full-view" style={{display:'flex',height:'calc(100vh - 60px - 49px)',overflow:'hidden'}}>
-          {/* Left labels */}
-          <div ref={sidebarRef} onScroll={handleScroll} style={{width:260,flexShrink:0,borderRight:'1px solid var(--border)',overflowY:'auto',background:'var(--surface)',overflowX:'hidden'}}>
-            {/* Search box in sidebar */}
-            <div style={{padding:'8px 10px',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',position:'sticky',top:0,zIndex:6}}>
-              <input
-                type="text"
-                placeholder="🔍 Search projects..."
-                value={search}
-                onChange={e=>setSearch(e.target.value)}
-                style={{width:'100%',padding:'5px 10px',borderRadius:6,border:'1px solid var(--border)',fontSize:'0.78rem',background:'var(--bg-color)',color:'var(--text)',boxSizing:'border-box'}}
-              />
+        {/*
+          TWO-PANEL LAYOUT:
+          ┌──────────────┬────────────────────────────────────────────┐
+          │  LEFT PANEL  │         RIGHT PANEL (scrolls X+Y)         │
+          │  (labels)    ├────────────────────────────────────────────┤
+          │  scrolls Y   │  Year header  (sticky top)                │
+          │  only        ├────────────────────────────────────────────┤
+          │              │  Month header (sticky top)                 │
+          │  Labels stay ├────────────────────────────────────────────┤
+          │  PINNED      │  Gantt bars   (scrolls Y)                  │
+          └──────────────┴────────────────────────────────────────────┘
+        */}
+        <div id="gantt-full-view" style={{display:'flex', height:`calc(100vh - ${HEADER_H}px - ${TOOLBAR_H}px)`, overflow:'hidden'}}>
+
+          {/* ───── LEFT LABEL PANEL (pinned, no horizontal scroll) ───── */}
+          <div style={{
+            width: LABEL_W,
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRight: '2px solid var(--border)',
+            background: 'var(--surface)',
+            zIndex: 10,
+          }}>
+            {/* Header placeholder (same height as the year+month row in the right panel) */}
+            <div style={{
+              height: COL_HEAD_H,
+              flexShrink: 0,
+              background: '#1e3a8a',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              padding: '0 12px',
+              borderBottom: '2px solid #1e3a8a',
+            }}>
+              <div style={{fontSize:'.65rem',fontWeight:700,color:'rgba(255,255,255,0.6)',marginBottom:4}}>TIMELINE</div>
+              <div style={{fontSize:'.72rem',fontWeight:800,color:'#fff'}}>PROJECT / PHASE</div>
             </div>
-            <div style={{height:34,display:'flex',alignItems:'center',padding:'0 12px',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',fontWeight:700,fontSize:'.72rem',color:'var(--text-muted)',textTransform:'uppercase',position:'sticky',top:46,zIndex:5}}>Project / Phase</div>
-            {filtered.map(p=>(
-              <div key={p._key}>
-                <div style={{padding:'0 10px',fontWeight:700,fontSize:'.78rem',color:'var(--primary)',background:'var(--surface-2)',borderBottom:'1px solid var(--border)',height:ROW_H_PRJ,display:'flex',alignItems:'center',overflow:'hidden'}}>
-                  <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.project}</span>
-                </div>
-                {(p.il_phases||[]).map((il,idx)=>(
-                  <React.Fragment key={il.id}>
-                    <div onClick={()=>togglePhase(p._key,il.id)} style={{height:ROW_H_PH,display:'flex',alignItems:'center',padding:'0 8px 0 18px',gap:6,background:IL_BGS[idx]+'66',borderBottom:'1px solid var(--border)',cursor:'pointer',fontSize:'.72rem',fontWeight:600,color:IL_COLORS[idx],overflow:'hidden'}}>
-                      <span style={{fontSize:'.6rem',flexShrink:0}}>{expanded[p._key+'_'+il.id]?'▼':'▶'}</span>
-                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{il.label}</span>
-                    </div>
-                    {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si)=>(
-                      <div key={si} style={{height:ROW_H_ST,display:'flex',alignItems:'center',padding:'0 6px 0 32px',background:IL_BGS[idx]+'22',borderBottom:'1px solid var(--border)',fontSize:'.68rem',color:st.done?'var(--text-light)':'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:st.done?'line-through':'none'}}>
-                        {st.label||st}
+
+            {/* Scrollable label list — vertically synced with gantt body */}
+            <div
+              ref={labelsRef}
+              onScroll={handleLabelScroll}
+              style={{flex:1, overflowY:'auto', overflowX:'hidden'}}
+            >
+              {filtered.map(p => (
+                <div key={p._key}>
+                  {/* Project row — id is used for scrollToLabel() */}
+                  <div
+                    id={`label-proj-${p._key}`}
+                    style={{
+                      padding:'0 10px',
+                      fontWeight:700,
+                      fontSize:'.78rem',
+                      color: highlightedProjKey === p._key ? '#fff' : 'var(--primary)',
+                      background: highlightedProjKey === p._key ? '#1e3a8a' : 'var(--surface-2)',
+                      borderBottom:'1px solid var(--border)',
+                      height:ROW_H_PRJ,
+                      display:'flex',
+                      alignItems:'center',
+                      overflow:'hidden',
+                      transition:'background 0.3s, color 0.3s',
+                      borderLeft: highlightedProjKey === p._key ? '4px solid #60a5fa' : '4px solid transparent',
+                    }}
+                  >
+                    <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={p.project}>{p.project}</span>
+                  </div>
+                  {/* IL phase rows */}
+                  {(p.il_phases||[]).map((il,idx) => (
+                    <React.Fragment key={il.id}>
+                      <div
+                        onClick={() => togglePhase(p._key, il.id)}
+                        style={{
+                          height:ROW_H_PH,
+                          display:'flex',alignItems:'center',
+                          padding:'0 8px 0 18px',gap:6,
+                          background:IL_BGS[idx]+'88',
+                          borderBottom:'1px solid var(--border)',
+                          cursor:'pointer',fontSize:'.72rem',fontWeight:600,color:IL_COLORS[idx],overflow:'hidden'
+                        }}
+                      >
+                        <span style={{fontSize:'.6rem',flexShrink:0}}>{expanded[p._key+'_'+il.id]?'▼':'▶'}</span>
+                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{il.label}</span>
                       </div>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </div>
-            ))}
-            {filtered.length===0&&<div className="no-data">No projects found.</div>}
-            <div style={{height:100}}/>
-          </div>
-
-          {/* Gantt bars area */}
-          <div ref={ganttXScrollRef} style={{flex:1,overflowX:'auto',position:'relative',display:'flex',flexDirection:'column'}}>
-            <div style={{minWidth:totalW}}>
-              {/* Year/Quarter group header */}
-              <div style={{display:'flex',height:28,position:'sticky',top:0,zIndex:10,background:'var(--surface-2)',borderBottom:'1px solid var(--border)'}}>
-                {groups.map((g,i)=>(
-                  <div key={i} style={{width:g.span*cw,borderRight:'1px solid var(--border)',padding:'5px 6px',fontSize:'.62rem',fontWeight:700,color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',flexShrink:0}}>{g.label}</div>
-                ))}
-              </div>
-              {/* Column header */}
-              <div style={{display:'flex',height:24,position:'sticky',top:28,zIndex:10,background:'var(--surface-2)',borderBottom:'2px solid var(--border)'}}>
-                {cols.map((c,i)=>(
-                  <div key={i} style={{width:cw,height:'100%',textAlign:'center',fontSize:'.58rem',color:'var(--text-light)',fontWeight:400,flexShrink:0,borderRight:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center'}}>{c.label}</div>
-                ))}
-              </div>
-
-              {/* Scrollable rows */}
-              <div ref={ganttBodyRef} onScroll={handleScroll} style={{overflowY:'auto',height:'calc(100vh - 60px - 49px - 52px)',position:'relative'}}>
-                {/* Grid background + today line */}
-                <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,display:'flex',pointerEvents:'none',zIndex:0}}>
-                  {cols.map((c,i)=>(
-                    <div key={i} style={{width:cw,borderRight:'1px solid var(--border-light)',flexShrink:0}}/>
+                      {expanded[p._key+'_'+il.id] && (il.subtasks||[]).map((st,si) => (
+                        <div key={si} style={{
+                          height:ROW_H_ST,
+                          display:'flex',alignItems:'center',
+                          padding:'0 6px 0 32px',
+                          background:IL_BGS[idx]+'33',
+                          borderBottom:'1px solid var(--border)',
+                          fontSize:'.68rem',
+                          color:st.done?'var(--text-light)':'var(--text-muted)',
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                          textDecoration:st.done?'line-through':'none',
+                        }}>
+                          {st.label||st}
+                        </div>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </div>
+              ))}
+              {filtered.length === 0 && <div className="no-data">No projects found.</div>}
+              <div style={{height:80}}/>
+            </div>
+          </div>
+
+          {/* ───── RIGHT GANTT PANEL (scrolls horizontally) ───── */}
+          <div ref={ganttXRef} onScroll={handleXScroll} style={{flex:1, overflowX:'auto', display:'flex', flexDirection:'column'}}>
+            {/* This inner div is as wide as all the timeline columns */}
+            <div style={{minWidth:totalW, display:'flex', flexDirection:'column', flex:1}}>
+
+              {/* Sticky column headers (year + month) */}
+              <div style={{position:'sticky',top:0,zIndex:15,background:'var(--surface-2)',borderBottom:'2px solid var(--border)',flexShrink:0}}>
+                {/* Year group row */}
+                <div style={{display:'flex',height:28}}>
+                  {groups.map((g,i) => (
+                    <div key={i} style={{
+                      width:g.span*cw,flexShrink:0,
+                      borderRight:'1px solid var(--border)',
+                      padding:'5px 6px',
+                      fontSize:'.62rem',fontWeight:700,color:'var(--text-muted)',
+                      whiteSpace:'nowrap',overflow:'hidden',
+                      background: i%2===0 ? 'var(--surface-2)' : 'var(--surface)',
+                    }}>{g.label}</div>
+                  ))}
+                </div>
+                {/* Month/week/quarter label row */}
+                <div style={{display:'flex',height:24}}>
+                  {cols.map((c,i) => (
+                    <div key={i} style={{
+                      width:cw,height:'100%',
+                      textAlign:'center',fontSize:'.58rem',color:'var(--text-light)',fontWeight:400,
+                      flexShrink:0,borderRight:'1px solid var(--border)',
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                    }}>{c.label}</div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scrollable gantt body — vertically synced with left labels */}
+              <div
+                ref={ganttBodyRef}
+                onScroll={handleBodyScroll}
+                style={{flex:1, overflowY:'auto', position:'relative'}}
+              >
+                {/* Grid background vertical lines */}
+                <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,display:'flex',pointerEvents:'none',zIndex:0}}>
+                  {cols.map((_,i) => <div key={i} style={{width:cw,borderRight:'1px solid var(--border-light)',flexShrink:0}}/>)}
+                </div>
+
+                {/* TODAY vertical line */}
                 {todayX > 0 && (
                   <div style={{position:'absolute',left:todayX,top:0,bottom:0,width:2,background:'#3b82f6',zIndex:20,pointerEvents:'none'}}>
-                    <div style={{position:'absolute',top:4,left:4,background:'#3b82f6',color:'#fff',padding:'2px 6px',fontSize:'0.62rem',fontWeight:800,borderRadius:10,whiteSpace:'nowrap'}}>TODAY</div>
+                    <div style={{position:'sticky',top:4,left:4,background:'#3b82f6',color:'#fff',padding:'2px 6px',fontSize:'0.6rem',fontWeight:800,borderRadius:10,whiteSpace:'nowrap',display:'inline-block'}}>TODAY</div>
                   </div>
                 )}
 
                 {/* Project rows */}
                 <div style={{position:'relative',zIndex:1}}>
-                  {filtered.map(p=>{
+                  {filtered.map(p => {
                     let targetStart = null
-                    ;(p.il_phases||[]).forEach(il=>{
+                    ;(p.il_phases||[]).forEach(il => {
                       if (il.startDate && (!targetStart || il.startDate < targetStart)) targetStart = il.startDate
                     })
                     return (
-                      <div key={p._key} id={`gantt-proj-${p._key}`}>
+                      <div key={p._key}>
+                        {/* Project-level bar row — floating project name follows the scroll */}
                         <div style={{position:'relative',height:ROW_H_PRJ,borderBottom:'1px solid var(--border)',background:'var(--surface-2)'}}>
+                          {/* Floating project name label — always visible at the left edge of the viewport */}
+                          <div
+                            title="Click to jump to this project in the label panel"
+                            onClick={() => scrollToLabel(p._key)}
+                            style={{
+                              position: 'absolute',
+                              left: ganttScrollX + 8,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: highlightedProjKey === p._key ? '#2563eb' : 'rgba(30,58,138,0.88)',
+                              color: '#fff',
+                              padding: '2px 10px',
+                              borderRadius: 10,
+                              fontSize: '.68rem',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                              maxWidth: 240,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              zIndex: 5,
+                              cursor: 'pointer',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.22)',
+                              userSelect: 'none',
+                              transition: 'background 0.2s',
+                              border: '1px solid rgba(255,255,255,0.25)',
+                            }}
+                          >🔍 {p.project}</div>
                           {targetStart && p.liveTarget && bar(targetStart, p.liveTarget, 0, 16, false, true, p.project, '50%')}
                         </div>
-                        {(p.il_phases||[]).map((il,idx)=>{
+                        {/* IL phase rows */}
+                        {(p.il_phases||[]).map((il,idx) => {
                           const tStart = il.targetStart || il.startDate
                           const tEnd   = il.targetEnd   || il.startDate
                           const aStart = il.actualStart  || il.endDate
@@ -312,7 +535,7 @@ export default function Gantt() {
                                 {tStart&&tEnd&&bar(tStart,tEnd,idx,10,false,true,`${p.project} - ${il.label}`,'30%')}
                                 {aStart&&aEnd&&bar(aStart,aEnd,idx,10,(il.subtasks||[]).every(s=>s.done)&&(il.subtasks||[]).length>0,false,`${p.project} - ${il.label}`,'70%')}
                               </div>
-                              {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si)=>{
+                              {expanded[p._key+'_'+il.id]&&(il.subtasks||[]).map((st,si) => {
                                 const stTStart = st.targetStart || st.startDate
                                 const stTEnd   = st.targetEnd   || st.endDate
                                 const stAStart = st.actualStart || (st.done ? st.startDate : null)
@@ -331,10 +554,11 @@ export default function Gantt() {
                     )
                   })}
                 </div>
-                <div style={{height:100}}/>
+                <div style={{height:80}}/>
               </div>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -356,9 +580,13 @@ export default function Gantt() {
             </div>
             <div className="modal-footer" style={{marginTop:20,display:'flex',justifyContent:'flex-end',gap:10}}>
               <button className="btn btn-ghost" onClick={()=>setShowExportModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={downloadScreenshot} disabled={!exportProjKey||exporting}>
-                {exporting ? 'Generating...' : 'Download Image'}
-              </button>
+              <div className="header-actions">
+                <button className="btn btn-primary" onClick={downloadScreenshot} disabled={!exportProjKey||exporting}>
+                  {exporting ? 'Generating...' : 'Export Snapshot'}
+                </button>
+                <button className="btn btn-secondary" style={{marginLeft: 8}} onClick={handleExportPPT}>Export PPTX</button>
+                <button className="btn btn-secondary" style={{marginLeft: 8}} onClick={handleExportExcel}>Export Excel</button>
+              </div>
             </div>
           </div>
         </div>

@@ -28,83 +28,82 @@ const upload = multer({
 
 // ── 30-column master header list (export order) ──────
 const MASTER_HEADERS = [
-  // ─── Dashboard ───────────────────────────────────
-  'Project Code',        // parentCode
-  'Project Name',        // project        ← REQUIRED
-  'Theme',               // theme
-  'Division',            // division
-  'IL Status',           // status
-  'Category',            // category
-  'Financial Year',      // fy
-  'Live Target Date',    // liveTarget      (YYYY-MM-DD)
-  'Live Actual Date',    // liveActual      (YYYY-MM-DD)
-  'Man-Hours / Month',   // manhours
-  'Direct Cost (INR)',   // directCost
-  'Proactive Defects',   // proactiveDefect
-  'Use Cases',           // useCases
-  // ─── Flagship ───────────────────────────────────
-  'Flagship (Y/N)',      // flagship
-  'Critical (Y/N)',      // critical
-  'MIS (Y/N)',           // mis
-  'Third Party (Y/N)',   // thirdParty
-  'Remarks',             // overallStatus
-  'Assigned To Staff ID',
-  'Overall Progress',
+  'RowNum',
+  'Project Type',
+  'Parent code',
+  'Child Code',
+  'Linked Parent code',
+  'Project family code',
+  'MIS',
+  'FSHIP',
+  'Project',
+  'AI-DX',
+  'Status',
+  'Category',
+  'Division',
+  'Live (Target)',
+  'FY',
+  'Live (Actual)',
+  'EOL Date(Actual)',
+  'Savings Manhours per Year',
+  'Manhours per Month',
+  'Investment FY 21~22',
+  'Investment FY 22~23',
+  'Investment FY 23~24',
+  'Investment FY 24~25',
+  'Investment FY 25~26',
+  'Capital Investment FY 25~26',
+  'Investment FY 26~27',
+  'Running Cost FY 26~27 (Investment)',
+  'Direct Cost Saving(MRs)',
+  'Proactive Defect Detection',
+  'Use Cases',
+  // --- Extra fields preserved for completeness ---
   'IL1 Target Start', 'IL1 Target End', 'IL1 Actual Start', 'IL1 Actual End',
   'IL2 Target Start', 'IL2 Target End', 'IL2 Actual Start', 'IL2 Actual End',
   'IL3 Target Start', 'IL3 Target End', 'IL3 Actual Start', 'IL3 Actual End',
   'IL4 Target Start', 'IL4 Target End', 'IL4 Actual Start', 'IL4 Actual End',
   'IL5 Target Start', 'IL5 Target End', 'IL5 Actual Start', 'IL5 Actual End',
-  // ─── Legacy Hidden Columns ───────────────────────
-  'Project Type',
-  'Parent code',
-  'Child C',
-  'Linked Parent code',
-  'Project family code'
+  'Assigned To Staff ID', 'Remarks', 'Critical', 'Third Party'
 ];
 
 // ── Flexible inbound column map ───────────────────────
 const COLUMN_MAP = {
-  // dashboard
-  'project code':           'parentCode',
+  // core
   'parent code':            'parentCode',
-  'project name':           'project',
   'project':                'project',
+  'ai-dx':                  'theme',
   'theme':                  'theme',
   'division':               'division',
-  'il status':              'status',
   'status':                 'status',
+  'il status':              'status',
   'category':               'category',
+  'fy':                     'fy',
   'financial year':         'fy',
+  'live (target)':          'liveTarget',
   'live target date':       'liveTarget',
-  'target date':            'liveTarget',
-  'live target':            'liveTarget',
+  'live (actual)':          'liveActual',
   'live actual date':       'liveActual',
-  'actual date':            'liveActual',
-  'live actual':            'liveActual',
+  // metrics
+  'savings manhours per year': 'manhours',
   'man-hours / month':      'manhours',
-  'man-hours':              'manhours',
+  'direct cost saving(mrs)':'directCost',
   'direct cost (inr)':      'directCost',
-  'direct cost':            'directCost',
-  'cost':                   'directCost',
+  'proactive defect detection': 'proactiveDefect',
   'proactive defects':      'proactiveDefect',
-  'defects':                'proactiveDefect',
   'use cases':              'useCases',
-  // flagship & flags
-  'flagship (y/n)':         'flagship',
+  // flags
+  'fship':                  'flagship',
   'flagship':               'flagship',
-  'critical (y/n)':         'critical',
-  'critical':               'critical',
-  'mis (y/n)':              'mis',
+  'flagship (y/n)':         'flagship',
   'mis':                    'mis',
-  'third party (y/n)':      'thirdParty',
+  'mis (y/n)':              'mis',
+  'critical':               'critical',
+  'critical (y/n)':         'critical',
   'third party':            'thirdParty',
-  'thirdparty':             'thirdParty',
+  'third party (y/n)':      'thirdParty',
   'remarks':                'overallStatus',
-  'overall status':         'overallStatus',
-  'remark':                 'overallStatus',
-  'overall progress':       'overallStatus',
-  // Phase Dates
+  // phases
   'il1 target start':       'IL1 Target Start',
   'il1 target end':         'IL1 Target End',
   'il1 actual start':       'IL1 Actual Start',
@@ -126,9 +125,6 @@ const COLUMN_MAP = {
   'il5 actual start':       'IL5 Actual Start',
   'il5 actual end':         'IL5 Actual End',
   'assigned to staff id':   'assignedStaffId',
-  'staff id':               'assignedStaffId',
-  'assigned to':            'assignedStaffId',
-  'assigned':               'assignedStaffId',
 };
 
 const VALID_STATUSES = ['IL1','IL2','IL3','IL4','IL5','Live','On Hold','Cancelled'];
@@ -221,27 +217,40 @@ function generateExcelBuffer(db) {
 
   const wb = XLSX.utils.book_new();
 
-  // ── Sheet 1: Master Data (all 30 fields) ──────────
-    const dataRows = projects.map(p => {
+  // ── Sheet 1: Master Data ──────────
+    const dataRows = projects.map((p, i) => {
       const rowArray = [
-      p.parentCode  || '',
+      i + 1,            // RowNum
+      'Parent',         // Project Type
+      p.parentCode || '', // Parent code
+      '',               // Child Code
+      '',               // Linked Parent code
+      p.parentCode || '', // Project family code
+      p.mis        ? 'Y' : 'N', // MIS
+      p.flagship   ? 'Y' : 'N', // FSHIP
       p.project     || '',
-      p.theme       || '',
-      p.division    || '',
+      p.theme       || '', // AI-DX
       p.status      || '',
       p.category    || '',
-      p.fy          || '',
+      p.division    || '',
       p.liveTarget  || '',
+      p.fy          || '',
       p.liveActual  || '',
-      p.manhours    != null ? p.manhours    : '',
-      p.directCost  != null ? p.directCost  : '',
-      p.proactiveDefect != null ? p.proactiveDefect : '',
+      '', // EOL Date(Actual)
+      p.manhours    != null ? p.manhours    : '', // Savings Manhours per Year
+      '', // Manhours per Month
+      '', // Investment FY 21~22
+      '', // Investment FY 22~23
+      '', // Investment FY 23~24
+      '', // Investment FY 24~25
+      '', // Investment FY 25~26
+      '', // Capital Investment FY 25~26
+      '', // Investment FY 26~27
+      '', // Running Cost FY 26~27
+      p.directCost  != null ? p.directCost  : '', // Direct Cost Saving(MRs)
+      p.proactiveDefect != null ? p.proactiveDefect : '', // Proactive Defect Detection
       p.useCases    != null ? p.useCases    : '',
-      p.flagship   ? 'Y' : 'N',
-      p.critical   ? 'Y' : 'N',
-      p.mis        ? 'Y' : 'N',
-      p.thirdParty ? 'Y' : 'N',
-      p.overallStatus || '',
+      // Extras
       p.il1_ts || '', p.il1_te || '', p.il1_as || '', p.il1_ae || '',
       p.il2_ts || '', p.il2_te || '', p.il2_as || '', p.il2_ae || '',
       p.il3_ts || '', p.il3_te || '', p.il3_as || '', p.il3_ae || '',
@@ -249,11 +258,8 @@ function generateExcelBuffer(db) {
       p.il5_ts || '', p.il5_te || '', p.il5_as || '', p.il5_ae || '',
       p.assignedStaffId || '',
       p.overallStatus || '',
-      'Parent',         // Project Type
-      p.parentCode || '', // Parent code
-      '',               // Child C
-      '',               // Linked Parent code
-      p.parentCode || '', // Project family code
+      p.critical ? 'Y' : 'N',
+      p.thirdParty ? 'Y' : 'N',
       ...customCols.map(c => p.customData?.[c.id] || '')
     ];
     
@@ -270,7 +276,7 @@ function generateExcelBuffer(db) {
     const ws1 = XLSX.utils.aoa_to_sheet([DYNAMIC_HEADERS, ...dataRows]);
     // Set column widths and hide legacy columns
     ws1['!cols'] = DYNAMIC_HEADERS.map(h => {
-      if (['Project Type', 'Parent code', 'Child C', 'Linked Parent code', 'Project family code'].includes(h)) {
+      if (['RowNum', 'Project Type', 'Parent code', 'Child Code', 'Linked Parent code', 'Project family code'].includes(h)) {
         return { hidden: true };
       }
       return { wch: Math.max(String(h).length + 2, 16) };
@@ -282,23 +288,23 @@ function generateExcelBuffer(db) {
     // ── Sheet 2: Column Reference ─────────────────────
     const refRows = [
       ['Column Header',          'Field',          'View',                     'Example / Notes'],
-      ['Project Code',           'parentCode',     'Dashboard, Flagship',       '#A001'],
-      ['Project Name',           'project',        'All Views',                 'Vendor Portal — REQUIRED'],
-      ['Theme',                  'theme',          'All Views',                 'Digital Transformation'],
+      ['Parent code',            'parentCode',     'Dashboard, Flagship',       '#A001'],
+      ['Project',                'project',        'All Views',                 'Vendor Portal — REQUIRED'],
+      ['AI-DX',                  'theme',          'All Views',                 'Digital Transformation'],
       ['Division',               'division',       'Dashboard',                 'Finance'],
-      ['IL Status',              'status',         'All Views',                 'IL1 / IL2 / IL3 / IL4 / IL5 / Live / On Hold / Cancelled'],
+      ['Status',                 'status',         'All Views',                 'IL1 / IL2 / IL3 / IL4 / IL5 / Live / On Hold / Cancelled'],
       ['Category',               'category',       'Dashboard',                 'Process Automation'],
-      ['Financial Year',         'fy',             'Dashboard',                 '2025-26'],
-      ['Live Target Date',       'liveTarget',     'Dashboard, Gantt',          '2025-12-31  (YYYY-MM-DD)'],
-      ['Live Actual Date',       'liveActual',     'Dashboard',                 '2026-01-15  (YYYY-MM-DD)'],
-      ['Man-Hours / Month',      'manhours',       'Dashboard (KPI)',            '120'],
-      ['Direct Cost (INR)',      'directCost',     'Dashboard (KPI)',            '500000'],
-      ['Proactive Defects',      'proactiveDefect','Dashboard (KPI)',            '45'],
+      ['FY',                     'fy',             'Dashboard',                 '2025-26'],
+      ['Live (Target)',          'liveTarget',     'Dashboard, Gantt',          '2025-12-31  (YYYY-MM-DD)'],
+      ['Live (Actual)',          'liveActual',     'Dashboard',                 '2026-01-15  (YYYY-MM-DD)'],
+      ['Savings Manhours per Year','manhours',     'Dashboard (KPI)',            '120'],
+      ['Direct Cost Saving(MRs)','directCost',     'Dashboard (KPI)',            '500000'],
+      ['Proactive Defect Detection','proactiveDefect','Dashboard (KPI)',         '45'],
       ['Use Cases',              'useCases',       'Dashboard (KPI)',            '12'],
-      ['Flagship (Y/N)',         'flagship',       'Flagship page',             'Y or N'],
-      ['Critical (Y/N)',         'critical',       'Dashboard',                 'Y or N'],
-      ['MIS (Y/N)',              'mis',            'Dashboard',                 'Y or N'],
-      ['Third Party (Y/N)',      'thirdParty',     'Flagship page',             'Y or N'],
+      ['FSHIP',                  'flagship',       'Flagship page',             'Y or N'],
+      ['Critical',               'critical',       'Dashboard',                 'Y or N'],
+      ['MIS',                    'mis',            'Dashboard',                 'Y or N'],
+      ['Third Party',            'thirdParty',     'Flagship page',             'Y or N'],
       ['Remarks',                'overallStatus',  'Flagship, Dashboard',        'Design phase in progress...'],
       ['IL1 Target Start',       'IL1 Target Start', 'Gantt Chart',              '2024-04-01'],
       ['IL1 Target End',         'IL1 Target End',   'Gantt Chart',              '2024-05-15'],
@@ -542,8 +548,8 @@ function processExcelBuffer(db, buffer, userEmail, userName, userRole, userUid) 
 
 // ── POST /api/projects/import ─────────────────────────
 router.post('/import', authMiddleware, upload.single('file'), (req, res) => {
-  if (!['senior_manager', 'section_head'].includes(req.user.role))
-    return res.status(403).json({ error: 'Only Senior Managers and Section Heads can import.' });
+  if (req.user.role === 'viewer')
+    return res.status(403).json({ error: 'Viewers cannot import.' });
 
   if (!req.file)
     return res.status(400).json({ error: 'No file uploaded.' });
@@ -557,6 +563,22 @@ router.post('/import', authMiddleware, upload.single('file'), (req, res) => {
       req.user.role, 
       req.user.uid
     );
+
+    // Send notification to higher ones
+    if (imported > 0) {
+       const adminRows = db.prepare("SELECT email FROM users WHERE role IN ('admin', 'dpm', 'sic', 'tl')").all();
+       const adminEmails = adminRows.map(r => r.email);
+       const notifId = uuidv4();
+       db.prepare(`INSERT INTO notifications (id, type, title, body, to_users, cc_users, from_user, from_name, status, priority, created_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+       ).run(
+          notifId, 'general', 'Data Imported via Excel', 
+          `${req.user.name} (${req.user.role}) has successfully imported ${imported} projects via Excel upload.`, 
+          JSON.stringify(adminEmails), '[]', 
+          req.user.email, req.user.name, 'approved', 'normal', new Date().toISOString()
+       );
+       _broadcast('notification_new', { id: notifId, type: 'general', title: 'Data Imported via Excel', priority: 'normal', from_name: req.user.name });
+    }
 
     // Broadcast updated list
     const allRows = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();

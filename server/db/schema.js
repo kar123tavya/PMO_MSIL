@@ -47,16 +47,47 @@ function initSchema() {
       name         TEXT NOT NULL,
       email        TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role         TEXT NOT NULL DEFAULT 'pic',
+      role         TEXT NOT NULL DEFAULT 'viewer',
+      manager_email TEXT,
       department   TEXT,
       division     TEXT,
       section      TEXT,
       staff_no     TEXT,
       designation  TEXT,
       status       TEXT NOT NULL DEFAULT 'pending',
+      photo_base64 TEXT,
       created_at   TEXT NOT NULL,
       updated_at   TEXT
     );
+  `);
+  
+  try { db.prepare("ALTER TABLE notifications ADD COLUMN cleared_by TEXT DEFAULT '[]'").run(); } catch(e) {}
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS health_cards (
+      id          TEXT PRIMARY KEY,
+      division    TEXT NOT NULL,
+      month_year  TEXT NOT NULL,
+      data_json   TEXT NOT NULL,
+      updated_by  TEXT,
+      updated_by_name TEXT,
+      updated_at  TEXT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_hc_div_month ON health_cards(division, month_year);
+  `);
+
+  try { db.exec("ALTER TABLE users ADD COLUMN manager_email TEXT;"); } catch (e) {}
+
+  // Migrate roles
+  db.exec(`
+    UPDATE users SET role = 'dpm' WHERE role = 'department_head';
+    UPDATE users SET role = 'sic' WHERE role = 'division_head';
+    UPDATE users SET role = 'tl' WHERE role = 'section_head';
+    UPDATE users SET role = 'admin' WHERE role = 'senior_manager';
+    UPDATE users SET role = 'pic' WHERE role = 'deputy_manager';
+  `);
+  
+  db.exec(`
 
     CREATE TABLE IF NOT EXISTS projects (
       id               TEXT PRIMARY KEY,
@@ -82,12 +113,23 @@ function initSchema() {
       phases           TEXT DEFAULT '{}',
       custom_data      TEXT DEFAULT '{}',
       assigned_to      TEXT,
+      assigned_staff_id TEXT,
+      bu_email         TEXT,
+      il4_learnings    TEXT,
+      effort_scores    TEXT DEFAULT '{}',
       created_at       TEXT NOT NULL,
       created_by       TEXT,
       updated_at       TEXT,
       updated_by       TEXT
     );
+  `);
 
+  try { db.exec("ALTER TABLE projects ADD COLUMN bu_email TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN il4_learnings TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN effort_scores TEXT DEFAULT '{}';"); } catch (e) {}
+  try { db.exec("ALTER TABLE notifications ADD COLUMN custom_data TEXT DEFAULT '{}';"); } catch (e) {}
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS audit_log (
       id           TEXT PRIMARY KEY,
       project_id   TEXT,
@@ -118,6 +160,8 @@ function initSchema() {
       priority     TEXT DEFAULT 'normal',
       changes_json TEXT,
       read_by      TEXT DEFAULT '[]',
+      cleared_by   TEXT DEFAULT '[]',
+      custom_data  TEXT DEFAULT '{}',
       created_at   TEXT NOT NULL,
       updated_at   TEXT
     );
@@ -148,6 +192,7 @@ function initSchema() {
   /* ── Migrations ── */
   try { db.exec('ALTER TABLE projects ADD COLUMN assigned_staff_id TEXT;'); } catch(e) { /* ignores if exists */ }
   try { db.exec('ALTER TABLE projects ADD COLUMN last_exported_hash TEXT;'); } catch(e) { /* ignores if exists */ }
+  try { db.exec('ALTER TABLE users ADD COLUMN photo_base64 TEXT;'); } catch(e) { /* ignores if exists */ }
 
   /* ── Seed default admin if no users exist ── */
   const userCount = db.prepare('SELECT COUNT(*) AS cnt FROM users').get();
@@ -156,7 +201,7 @@ function initSchema() {
     db.prepare(`
       INSERT INTO users (id, name, email, password_hash, role, status, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(uuidv4(), 'Administrator', 'admin@maruti.co.in', hash, 'senior_manager', 'active', new Date().toISOString());
+    `).run(uuidv4(), 'Administrator', 'admin@maruti.co.in', hash, 'admin', 'active', new Date().toISOString());
     console.log('[PMO DB] Seeded admin — email: admin@maruti.co.in  password: admin123');
   }
 

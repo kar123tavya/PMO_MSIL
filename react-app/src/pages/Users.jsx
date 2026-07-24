@@ -61,7 +61,7 @@ export default function Users() {
     }
   }
 
-  async function handleRoleChange(uid, newRole) {
+  async function handleUserChange(uid, updates) {
     const target = users.find(u => u.uid === uid)
     if (!target) return
     try {
@@ -71,10 +71,10 @@ export default function Users() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionStorage.getItem('pmo_session') ? JSON.parse(sessionStorage.getItem('pmo_session')).token : ''}` 
         },
-        body: JSON.stringify({ ...target, role: newRole })
+        body: JSON.stringify({ ...target, ...updates })
       })
-      if (!res.ok) throw new Error('Failed to update role')
-      showToast('Role updated.', 'success')
+      if (!res.ok) throw new Error('Failed to update user')
+      showToast('User updated successfully.', 'success')
       fetchUsers()
     } catch (e) {
       showToast(e.message, 'error')
@@ -117,6 +117,7 @@ export default function Users() {
                       <th>Name</th>
                       <th>Email</th>
                       <th>Staff No / Desig</th>
+                      <th>Division</th>
                       <th>Role</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -125,26 +126,78 @@ export default function Users() {
                   <tbody>
                     {users.map(u => (
                       <tr key={u.uid}>
-                        <td style={{fontWeight: 600}}>{u.name} {u.uid === user.uid && <span className="stage-tag" style={{marginLeft: 8}}>You</span>}</td>
+                        <td style={{fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10}}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                            {u.photo_base64 ? (
+                              <img src={u.photo_base64} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              (u.name || 'U')[0].toUpperCase()
+                            )}
+                          </div>
+                          <div>
+                            {u.name} {u.uid === user.uid && <span className="stage-tag" style={{marginLeft: 8}}>You</span>}
+                          </div>
+                        </td>
                         <td style={{fontSize: '0.85rem'}}>{u.email}</td>
                         <td style={{fontSize: '0.85rem'}}>{u.staffNo || '—'} / {u.designation || '—'}</td>
                         <td>
                           {u.uid === user.uid ? (
+                            <span className="text-muted">{u.division || '—'}</span>
+                          ) : (
+                            <input 
+                              type="text" 
+                              className="input-field" 
+                              style={{padding: '4px 8px', fontSize: '0.85rem', width: '120px'}}
+                              value={u.division || ''}
+                              placeholder="Set Division..."
+                              onChange={(e) => {
+                                const newUsers = [...users]
+                                const idx = newUsers.findIndex(x => x.uid === u.uid)
+                                newUsers[idx].division = e.target.value
+                                setUsers(newUsers)
+                              }}
+                              onBlur={(e) => handleUserChange(u.uid, { division: e.target.value })}
+                            />
+                          )}
+                        </td>
+                        <td>
+                          {u.uid === user.uid ? (
                             <span className="stage-tag">{getRoleLabel(u.role)}</span>
                           ) : (
-                            <select 
-                              className="filter-select" 
-                              style={{padding: '4px', fontSize: '0.85rem', width: 'auto'}}
-                              value={u.role}
-                              onChange={(e) => handleRoleChange(u.uid, e.target.value)}
-                            >
-                              <option value="viewer">Viewer</option>
-                              <option value="pic">Person In Charge (PIC)</option>
-                              <option value="section_head">Section Head</option>
-                              <option value="division_head">Division Head</option>
-                              <option value="department_head">Department Head</option>
-                              <option value="admin">Admin</option>
-                            </select>
+                            <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                              <select 
+                                className="filter-select" 
+                                style={{padding: '4px', fontSize: '0.85rem', width: 'auto'}}
+                                value={u.role}
+                                onChange={(e) => handleUserChange(u.uid, { role: e.target.value })}
+                              >
+                                <option value="viewer">Viewer</option>
+                                <option value="pic">Person In Charge (PIC)</option>
+                                <option value="tl">Team Lead (TL)</option>
+                                <option value="sic">Section In Charge (SIC)</option>
+                                <option value="dpm">Department Project Manager (DPM)</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                              
+                              {['pic', 'tl', 'sic'].includes(u.role) && (
+                                <select 
+                                  className="filter-select" 
+                                  style={{padding: '4px', fontSize: '0.8rem', width: 'auto', background: '#f8fafc'}}
+                                  value={u.manager_email || ''}
+                                  onChange={(e) => handleUserChange(u.uid, { manager_email: e.target.value })}
+                                >
+                                  <option value="">-- Select Manager --</option>
+                                  {users.filter(m => {
+                                    if (u.role === 'pic') return m.role === 'tl';
+                                    if (u.role === 'tl') return m.role === 'sic';
+                                    if (u.role === 'sic') return m.role === 'dpm';
+                                    return false;
+                                  }).map(m => (
+                                    <option key={m.uid} value={m.email}>{m.name} ({getRoleLabel(m.role)})</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td>

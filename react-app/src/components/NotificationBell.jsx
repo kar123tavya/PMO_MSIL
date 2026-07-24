@@ -23,7 +23,7 @@ const STATUS_LABEL = {
 }
 
 export default function NotificationBell() {
-  const { count, items, loading, fetchAll, markRead, markAllRead, approveOrReject, approveEditRequest } = useNotifications()
+  const { count, items, loading, fetchAll, markRead, markAllRead, approveOrReject, approveEditRequest, clearAll } = useNotifications()
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const ref  = useRef(null)
@@ -95,9 +95,14 @@ export default function NotificationBell() {
             <div style={{ fontWeight: 700, fontSize: '.88rem', color: 'var(--text)' }}>
               Notifications {count > 0 && <span style={{ background: '#fee2e2', color: '#dc2626', borderRadius: '10px', padding: '1px 7px', fontSize: '.7rem', marginLeft: 6 }}>{count} new</span>}
             </div>
-            <button onClick={markAllRead} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
-              Mark all read
-            </button>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={markAllRead} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
+                Mark all read
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); clearAll(); }} style={{ background: 'none', border: 'none', fontSize: '.72rem', color: '#dc2626', cursor: 'pointer', fontWeight: 600 }}>
+                Clear All
+              </button>
+            </div>
           </div>
 
           {/* List */}
@@ -149,7 +154,7 @@ export default function NotificationBell() {
                     </div>
                   </div>
                   {/* Approve/Reject buttons for User Registrations */}
-                  {['admin', 'department_head'].includes(user?.role) && n.type === 'approval_request' && n.status === 'pending' && (
+                  {['admin', 'dpm'].includes(user?.role) && n.type === 'approval_request' && n.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                       <button
                         onClick={(e) => { e.stopPropagation(); approveOrReject(n.id, 'approve') }}
@@ -162,7 +167,7 @@ export default function NotificationBell() {
                     </div>
                   )}
                   {/* Approve/Reject buttons for Project Edits */}
-                  {['admin', 'department_head', 'division_head', 'section_head'].includes(user?.role) && n.type === 'edit_approval' && n.status === 'pending' && (
+                  {['admin', 'dpm', 'sic', 'tl'].includes(user?.role) && n.type === 'edit_approval' && n.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                       <button
                         onClick={(e) => { e.stopPropagation(); approveEditRequest(n.id, n.project_id, 'approve') }}

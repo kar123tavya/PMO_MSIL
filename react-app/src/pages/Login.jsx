@@ -52,15 +52,24 @@ export default function Login() {
     <div className="login-page">
       <div className="login-left">
         <div className="login-form-wrap">
-          <div style={{ display:'flex', flexDirection: 'column', alignItems:'center', gap:12, marginBottom:32 }}>
+          <div style={{ display:'flex', flexDirection: 'column', alignItems:'center', gap:10, marginBottom:32 }}>
             <div className="login-logo" style={{ marginBottom: 0 }}>
               <img 
                 src="/maruti-logo.png" 
                 alt="Maruti Suzuki" 
-                style={{ height: '50px', width: 'auto', display: 'block' }} 
+                style={{ height: '26px', width: 'auto', display: 'block', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} 
               />
             </div>
-            <div style={{ fontSize:'.85rem', color:'var(--text-muted)', fontWeight: 500 }}>Project Monitoring Tool</div>
+            <div style={{ 
+              fontSize:'0.9rem', 
+              fontWeight: 600, 
+              background: 'linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '0.5px'
+            }}>
+              Project Monitoring Tool
+            </div>
           </div>
 
           {mode === 'login' ? (
@@ -85,13 +94,27 @@ export default function Login() {
                 <input className="login-input" type="email"    placeholder="Maruti Suzuki Email" value={rEmail} onChange={e=>setREmail(e.target.value)} required />
                 <input className="login-input" type="text"     placeholder="Full Name"           value={rName}  onChange={e=>setRName(e.target.value)}  required />
                 <input className="login-input" type="text"     placeholder="Staff Number"        value={rStaff} onChange={e=>setRStaff(e.target.value)} />
-                <input className="login-input" type="text"     placeholder="Division (e.g. Digital)" value={rDiv} onChange={e=>setRDiv(e.target.value)} required />
+                {rRole === 'pic' && (
+                  <select className="login-input" value={rDiv} onChange={e=>setRDiv(e.target.value)} required>
+                    <option value="">-- Select Division --</option>
+                    <option value="MQ">MQ</option>
+                    <option value="ND">ND</option>
+                    <option value="PQ-MP">PQ-MP</option>
+                    <option value="PQ-NPD">PQ-NPD</option>
+                    <option value="COP">COP</option>
+                    <option value="PDS">PDS</option>
+                    <option value="VI">VI</option>
+                    <option value="VU">VU</option>
+                    <option value="MA">MA</option>
+                    <option value="VQ">VQ</option>
+                  </select>
+                )}
                 <select className="login-input" value={rRole} onChange={e=>setRRole(e.target.value)}>
                   <option value="viewer">Viewer</option>
                   <option value="pic">Person In Charge (PIC)</option>
-                  <option value="section_head">Section Head</option>
-                  <option value="division_head">Division Head</option>
-                  <option value="department_head">Department Head</option>
+                  <option value="tl">Team Lead (TL)</option>
+                  <option value="sic">Section In Charge (SIC)</option>
+                  <option value="dpm">Department Project Manager (DPM)</option>
                 </select>
                 <input className="login-input" type="password" placeholder="Password (min 6)"    value={rPass}  onChange={e=>setRPass(e.target.value)}  required minLength={6} />
                 <button className="login-btn" type="submit" disabled={loading}>{loading ? 'Creating…' : 'Sign Up'}</button>

@@ -36,7 +36,7 @@ router.post('/login', (req, res) => {
   };
 
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
-  res.json({ token, user: payload });
+  res.json({ token, user: { ...payload, photo_base64: user.photo_base64 || null } });
 });
 
 /* POST /api/auth/register */
@@ -50,7 +50,7 @@ router.post('/register', async (req, res) => {
     const id = uuidv4();
     
     // Default role is pic if not provided or invalid
-    const validRoles = ['admin', 'department_head', 'division_head', 'section_head', 'pic'];
+    const validRoles = ['admin', 'dpm', 'sic', 'tl', 'pic', 'viewer'];
     const assignedRole = validRoles.includes(role) ? role : 'pic';
 
     db.prepare(`

@@ -17,10 +17,15 @@ let _broadcast = () => {};
 function setBroadcast(fn) { _broadcast = fn; }
 
 // ── Helper ──────────────────────────────────────────
+function isManagerOrAdmin(user) {
+  if (user.role === 'admin' || user.role === 'dpm') return true;
+  return false;
+}
+
 function userSees(n, user) {
   const toUsers = JSON.parse(n.to_users || '[]').map(e => (e || '').toLowerCase());
   const ccUsers = JSON.parse(n.cc_users || '[]').map(e => (e || '').toLowerCase());
-  if (user.role === 'admin' || user.role === 'department_head') return true;
+  if (isManagerOrAdmin(user)) return true;
   if ((n.from_user || '').toLowerCase() === (user.email || '').toLowerCase()) return true;
   if (toUsers.includes((user.email || '').toLowerCase()))  return true;
   if (ccUsers.includes((user.email || '').toLowerCase()))  return true;
@@ -30,10 +35,13 @@ function userSees(n, user) {
 // ── GET /api/notifications/count ─────────────────────
 router.get('/count', authMiddleware, (req, res) => {
   try {
-    const all = db.prepare('SELECT read_by, to_users, cc_users, from_user FROM notifications ORDER BY created_at DESC').all();
+    const all = db.prepare('SELECT read_by, to_users, cc_users, from_user, cleared_by FROM notifications ORDER BY created_at DESC').all();
     let count = 0;
     for (const n of all) {
       if (!userSees(n, req.user)) continue;
+      const clearedBy = JSON.parse(n.cleared_by || '[]');
+      if (clearedBy.includes(req.user.uid)) continue;
+      
       const readBy = JSON.parse(n.read_by || '[]');
       if (!readBy.includes(req.user.uid)) count++;
     }
@@ -48,7 +56,7 @@ router.get('/', authMiddleware, (req, res) => {
   try {
     const rows = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100').all();
     const mine = rows
-      .filter(n => userSees(n, req.user))
+      .filter(n => userSees(n, req.user) && !JSON.parse(n.cleared_by || '[]').includes(req.user.uid))
       .map(n => ({
         ...n,
         to_users:     JSON.parse(n.to_users  || '[]'),
@@ -106,6 +114,28 @@ router.post('/', authMiddleware, (req, res) => {
   }
 });
 
+// ── PATCH /api/notifications/clear_all ───────────────
+router.patch('/clear_all', authMiddleware, (req, res) => {
+  try {
+    const all = db.prepare('SELECT id, to_users, cc_users, from_user, cleared_by FROM notifications').all();
+    const now = new Date().toISOString();
+    let updatedCount = 0;
+    
+    for (const n of all) {
+      if (!userSees(n, req.user)) continue;
+      const clearedBy = JSON.parse(n.cleared_by || '[]');
+      if (!clearedBy.includes(req.user.uid)) {
+        clearedBy.push(req.user.uid);
+        db.prepare('UPDATE notifications SET cleared_by=?, updated_at=? WHERE id=?').run(JSON.stringify(clearedBy), now, n.id);
+        updatedCount++;
+      }
+    }
+    res.json({ success: true, count: updatedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── PATCH /api/notifications/:id ─────────────────────
 router.patch('/:id', authMiddleware, (req, res) => {
   try {
@@ -122,7 +152,7 @@ router.patch('/:id', authMiddleware, (req, res) => {
       if (action === 'unread' && idx > -1) readBy.splice(idx, 1);
       db.prepare('UPDATE notifications SET read_by=?, updated_at=? WHERE id=?').run(JSON.stringify(readBy), now, n.id);
     } else if (action === 'approve' || action === 'reject') {
-      if (!['admin', 'department_head', 'division_head', 'section_head'].includes(req.user.role))
+      if (!['admin', 'dpm', 'sic', 'tl'].includes(req.user.role))
         return res.status(403).json({ error: 'Insufficient permissions to approve/reject.' });
       
       const newStatus = action === 'approve' ? 'approved' : 'rejected';
@@ -162,7 +192,7 @@ router.patch('/:id', authMiddleware, (req, res) => {
 // ── DELETE /api/notifications/:id ────────────────────
 router.delete('/:id', authMiddleware, (req, res) => {
   try {
-    if (!['admin', 'department_head', 'division_head'].includes(req.user.role))
+    if (!['admin', 'dpm', 'sic'].includes(req.user.role))
       return res.status(403).json({ error: 'Insufficient permissions to delete notifications.' });
     db.prepare('DELETE FROM notifications WHERE id=?').run(req.params.id);
     res.json({ deleted: true });

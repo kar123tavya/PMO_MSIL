@@ -65,6 +65,7 @@ const importExportRoutes  = require('./routes/import-export');
 const notificationRoutes  = require('./routes/notifications');
 const auditRoutes         = require('./routes/audit');
 const aiRoutes            = require('./routes/ai');
+const healthcardRoutes    = require('./routes/healthcard');
 
 const { initExcelSync }   = require('./services/excelSyncService');
 
@@ -83,6 +84,7 @@ app.use('/api/settings',      settingsRoutes.router);
 app.use('/api/notifications', notificationRoutes.router);
 app.use('/api/audit',         auditRoutes);
 app.use('/api/ai',            aiRoutes);
+app.use('/api/healthcard',    healthcardRoutes.router);
 
 /* ── Serve frontend static files ── */
 // In production: serve React build from react-app/dist/

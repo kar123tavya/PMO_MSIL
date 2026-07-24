@@ -32,34 +32,46 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  const updateProfileContext = useCallback((updates) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const newUser = { ...prev, ...updates }
+      const s = sessionStorage.getItem('pmo_session')
+      if (s) {
+        const parsed = JSON.parse(s)
+        parsed.user = newUser
+        sessionStorage.setItem('pmo_session', JSON.stringify(parsed))
+      }
+      return newUser
+    })
+  }, [])
+
   const can = useCallback((action) => {
     if (!user) return false
     const PERMS = {
-      admin:           ['view_all','add_project','delete_project','edit_core','update_phase','update_status','import','export','manage_users','view_history','assign_project','manage_settings'],
-      department_head: ['view_all','add_project','delete_project','edit_core','update_phase','update_status','export','manage_users','view_history'],
-      division_head:   ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
-      section_head:    ['view_all','add_project','edit_core','update_phase','update_status','export','view_history'],
-      pic:             ['view_all','update_phase','update_status','export','view_history'],
-      viewer:          ['view_all','export'],
+      admin:  ['view_all','add_project','delete_project','edit_core','update_phase','update_status','import','export','manage_users','view_history','assign_project','manage_settings'],
+      dpm:    ['view_all','add_project','edit_core','update_phase','update_status','import','export','manage_users','view_history'],
+      sic:    ['view_all','add_project','edit_core','update_phase','update_status','import','export','view_history'],
+      tl:     ['view_all','add_project','edit_core','update_phase','update_status','import','export','view_history'],
+      pic:    ['view_all','add_project','edit_core','update_phase','update_status','import','export','view_history'],
+      viewer: ['view_all','export'],
     }
-    const effectiveRole = user.role === 'senior_manager' ? 'admin' : user.role === 'deputy_manager' ? 'pic' : user.role;
-    return (PERMS[effectiveRole] || []).includes(action)
+    return (PERMS[user.role] || []).includes(action)
   }, [user])
 
   const getRoleLabel = (role) => {
-    const effectiveRole = role === 'senior_manager' ? 'admin' : role === 'deputy_manager' ? 'pic' : role;
     return {
       admin: 'Admin',
-      department_head: 'Department Head',
-      division_head: 'Division Head',
-      section_head: 'Section Head',
+      dpm: 'Department Project Manager (DPM)',
+      sic: 'Section In Charge (SIC)',
+      tl: 'Team Lead (TL)',
       pic: 'Person In Charge (PIC)',
       viewer: 'Viewer',
-    }[effectiveRole] || effectiveRole
+    }[role] || role
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, can, getRoleLabel }}>
+    <AuthContext.Provider value={{ user, login, logout, can, getRoleLabel, updateProfileContext }}>
       {children}
     </AuthContext.Provider>
   )

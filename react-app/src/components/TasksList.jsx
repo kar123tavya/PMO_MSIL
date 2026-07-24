@@ -12,6 +12,9 @@ export default function TasksList() {
   const { user } = useAuth()
   const { projects } = useProjects()
   const [open, setOpen] = useState(false)
+  const [dismissedTasks, setDismissedTasks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('pmo_dismissed_tasks') || '{}') } catch { return {} }
+  })
   const ref  = useRef(null)
 
   useEffect(() => {
@@ -20,15 +23,22 @@ export default function TasksList() {
     return () => document.removeEventListener('mousedown', outside)
   }, [])
 
+  function handleClearTask(e, pKey, liveTarget) {
+    e.stopPropagation()
+    const newDismissed = { ...dismissedTasks, [pKey]: liveTarget }
+    setDismissedTasks(newDismissed)
+    localStorage.setItem('pmo_dismissed_tasks', JSON.stringify(newDismissed))
+  }
+
   // --- Generate Synthetic Deadline Alerts ---
   const today = new Date(); today.setHours(0,0,0,0);
   const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() + 14);
-  const isSM = user?.role === 'admin' || user?.role === 'department_head' || user?.role === 'division_head' || user?.role === 'section_head';
-  
+  const isSM = ['admin', 'dpm', 'sic', 'tl'].includes(user?.role);
   const deadlineAlerts = (projects || []).filter(p => {
     if (!isSM && p.division !== user?.division) return false;
     if (!p.liveTarget) return false;
     if (p.status === 'Live' || p.status === 'Cancelled') return false;
+    if (dismissedTasks[p._key] === p.liveTarget) return false; // Hide if already dismissed for this target date
     const d = new Date(p.liveTarget);
     return d <= cutoff;
   }).map(p => {
@@ -36,6 +46,8 @@ export default function TasksList() {
     const diff = Math.floor((d - today) / 86400000);
     return {
       id: `deadline_${p._key}`,
+      pKey: p._key,
+      liveTarget: p.liveTarget,
       type: 'deadline_alert',
       priority: diff < 0 ? 'urgent' : diff <= 7 ? 'high' : 'normal',
       title: `${p.project}`,
@@ -124,6 +136,12 @@ export default function TasksList() {
                         {n.body}
                       </div>
                     </div>
+                    <button
+                      onClick={(e) => handleClearTask(e, n.pKey, n.liveTarget)}
+                      style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', borderRadius: '6px', padding: '4px 8px', fontSize: '.7rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      ✓ Done
+                    </button>
                   </div>
                 </div>
               )
